@@ -4,10 +4,10 @@ from collections import OrderedDict
 class Dict:
     def __init__(self, fileName):
         self.dict = self.readDict(fileName)
-        self.coordinates = self.getCoordinates()
+        self.images = self.getImages()
         self.users = self.getUsers()
         self.fillUsers()
-        self.exportUsers()
+        #self.exportUsers()
 
     def readDict(self, fileName):
         d = []
@@ -18,13 +18,13 @@ class Dict:
                 d.append(row)
         return d
 
-    def getCoordinates(self):
-        c = []
+    def getImages(self):
+        i = []
         for row in self.dict:
-            coord = [[float(row['longitude']),float(row['latitude'])], row['owner']]
-            if coord not in c:
-                c.append(coord)
-        return c
+            img = [[float(row['longitude']),float(row['latitude'])], row['owner'],
+            row['dateupload'], row['url_c']]
+            i.append(img)
+        return i
 
     def getUsers(self):
         u = []
@@ -36,11 +36,11 @@ class Dict:
         return users
 
     def fillUsers(self):
-        for c in self.coordinates:
-            self.users[c[1]].append(c[0])
+        for i in self.images:
+            self.users[i[1]].append(i)
 
     def exportUsers(self):
-        with open("users.csv", 'w') as newcsvfile:
+        with open("usersC.csv", 'w') as newcsvfile:
             writer = csv.writer(newcsvfile)
             keys = []
             vals = []

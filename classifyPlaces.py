@@ -9,7 +9,7 @@ from io import BytesIO
 lim_coord = [12.291284137813543, 45.41960958653527, 12.372472707313529, 45.46473083343668]
 lim_width = lim_coord[2]-lim_coord[0]
 lim_height = lim_coord[3]-lim_coord[1]
-cellSize = lim_width/3360*5
+cellSize = lim_width/3360
 
 nrCellsX = int(lim_width/cellSize)
 nrCellsY = int(lim_height/cellSize)
@@ -119,56 +119,18 @@ def makeLocations(grid):
 
     return groups
 
-def getColour(imageAddress):
-    NUM_CLUSTERS = 5
-    response = requests.get(imageAddress)
-    im = Image.open(BytesIO(response.content))
-    #im.show()
-    im.resize((100,100))
-    ar = np.asarray(im)
-    shape = ar.shape
-    ar = ar.reshape(scipy.product(shape[:2]), shape[2]).astype(float)
-
-    #print('finding clusters')
-    codes, dist = scipy.cluster.vq.kmeans(ar, NUM_CLUSTERS)
-    #print('cluster centres:\n', codes)
-
-    vecs, dist = scipy.cluster.vq.vq(ar, codes)         # assign codes
-    counts, bins = scipy.histogram(vecs, len(codes))    # count occurrences
-
-    index_max = scipy.argmax(counts)                    # find most frequent
-    peak = codes[index_max]
-    colour = binascii.hexlify(bytearray(int(c) for c in peak)).decode('ascii')
-    #print('most frequent is %s (#%s)' % (peak, colour))
-    return colour
-
-def getAllImageColours(images):
-    with open("imagesCColour.csv", 'a') as newcsvfile:
+def exportGridtoRhino(grid):
+    with open("VeniceGrid1.csv", 'w') as newcsvfile:
         writer = csv.writer(newcsvfile)
-        for i in range(360,len(images)):
-            if images[i][3]:
-                try:
-                    c = getColour(images[i][3])
-                except IndexError:
-                    c = None
-            else:
-                c = None
-            images[i].append(c)
-            writer.writerow(images[i])
-            print("image: " + str(i) + "/" + str(len(images)))
+        for i in range(len(grid)):
+            for j in range(len(grid[0])):
+                if grid[i][j]:
+                    writer.writerow([i, j, len(grid[i][j][0])])
 
 photos = getPhotos('imagesC.csv')
 print("got Photos")
 
-#getAllImageColours(photos)
-
 fillGrid(photos, grid)
-locs = makeLocations(grid)
-print(len(locs))
-maxLoc = []
-for l in locs:
-    if len(l) > len(maxLoc):
-        maxLoc = l
-locs.sort(key=len, reverse = True)
-for i in range(10):
-    print(len(locs[10]))
+exportGridtoRhino(grid)
+#locs = makeLocations(grid)
+#print(len(locs))

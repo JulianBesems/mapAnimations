@@ -13,14 +13,15 @@ from classifyPlaces import *
 
 pygame.font.init()
 myfont = pygame.font.Font('/Users/julianbesems/Library/Fonts/HELR45W.ttf', 22)
+myfontI = pygame.font.Font('/Users/julianbesems/Library/Fonts/HELR45W.ttf', 35)
 myfontL = pygame.font.Font('/Users/julianbesems/Library/Fonts/HELR45W.ttf', 50)
 myfontS = pygame.font.Font('/Users/julianbesems/Library/Fonts/HELR45W.ttf', 14)
 
 infoText = ["Through the use of recommender systems digital media platforms such as Spotify present each",
-           "user with a different experience. How the platform is perceived is informed by the behaviour of",
-           "others, and the resulting relations between them. Because of this the way in which we consume",
-           "media has fundamentally changed, not only from the physical to the digital, but also in the",
-           "choices that we make.",
+           "user with a different customised experience. How the platform is perceived is informed by the",
+           "behaviour of others, and the resulting relations between them. Because of this the way in which",
+           "we consume media has fundamentally changed, not only from a physical platform to the digital",
+           "one, but also in the choices that we make.",
            "This mapping exercise of Flickr posts in Venice is aimed at experimenting with the implementation",
            "of a recommender system in a spatial context. The next step will be to develop a process to",
            "generate spatial configurations, where each outcome is defined by the how one specific input",
@@ -48,7 +49,7 @@ class Graphics:
     monthRange = [0,12]
     yearRange = [2003, 2019]
 
-    fileName = "imagesCColour.csv"
+    fileName = "imagesCColourA.csv"
 
     class Background(pygame.sprite.Sprite):
             def __init__(self, image_file, location):
@@ -303,19 +304,15 @@ class Graphics:
                     shownUsers.append(p[1])
         return (shownPhotos, shownUsers)
 
-    def showInfo():
-
+    def showInfo(self):
         iTexts = []
-        maxW = 0
         for i in infoText:
-            iText = myfont.render(i, False, (255,255,255))
-            tw,th = iText.get_size()
-            if tw> maxW:
-                maxW = tw
+            iText = myfontI.render(i, False, (255,255,255))
             iTexts.append(iText)
 
-        bw, bh = (tw + 3 * self.buffer, len(iTexts) * (th + self.ps) + 3 * self.buffer)
-        infoBox = pygame.Rect((self.screen_centre[0] - int(w/2), self.screen_centre[1] - int(h/2)),
+        tw, th = iTexts[0].get_size()
+        w, h = (tw + 5 * self.buffer, len(iTexts) * (th + self.ps) + 3 * self.buffer)
+        infoBox = pygame.Rect((self.screen_centre[0] - int(w/2) + self.buffer, self.screen_centre[1] - int(h/2)),
             (w, h))
         pygame.draw.rect(self._screen, [0,0,0],
                         infoBox)
@@ -336,7 +333,7 @@ class Graphics:
         pygame.display.update()
 
 
-        buildup = False
+        buildup = True
         frame = 0
         step = 600
         wait = True

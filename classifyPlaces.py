@@ -85,7 +85,7 @@ def makeLocations(grid):
     groups = []
     cell = None
     for i in range(len(grid)):
-        print(str(i) + "/" + str(nrCellsX) + "    groups: " + str(len(groups)))
+        #print(str(i) + "/" + str(nrCellsX) + "    groups: " + str(len(groups)))
         for j in range(len(grid[0])):
             cell = grid[i][j]
             if cell:
@@ -116,7 +116,6 @@ def makeLocations(grid):
                         groups.append(newGroup)
                         for c in newGroup:
                             c[1] = newGroup
-
     return groups
 
 def exportGridtoRhino(grid):
@@ -127,10 +126,12 @@ def exportGridtoRhino(grid):
                 if grid[i][j]:
                     writer.writerow([i, j, len(grid[i][j][0])])
 
-photos = getPhotos('imagesC.csv')
+"""photos = getPhotos('imagesCColourA.csv')
 print("got Photos")
 
 fillGrid(photos, grid)
-exportGridtoRhino(grid)
-#locs = makeLocations(grid)
-#print(len(locs))
+#exportGridtoRhino(grid)
+locs = makeLocations(grid)
+locs.sort(key = len, reverse = True)
+for i in range(10):
+    print(len(locs[i]))"""

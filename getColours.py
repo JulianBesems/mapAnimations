@@ -50,9 +50,9 @@ def getColour(imageAddress):
     return colour
 
 def getAllImageColours(images):
-    with open("imagesCColour4.csv", 'a') as newcsvfile:
+    with open("imagesCColour5.csv", 'a') as newcsvfile:
         writer = csv.writer(newcsvfile)
-        for i in range(175548,len(images)):
+        for i in range(195290,len(images)):
             if images[i][3]:
                 try:
                     c = getColour(images[i][3])

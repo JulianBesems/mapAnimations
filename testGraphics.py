@@ -24,7 +24,7 @@ infoText = ["Through the use of recommender systems digital media platforms such
            "one, but also in the choices that we make.",
            "This mapping exercise of Flickr posts in Venice is aimed at experimenting with the implementation",
            "of a recommender system in a spatial context. The next step will be to develop a process to",
-           "generate spatial configurations, where each outcome is defined by the how one specific input",
+           "generate spatial configurations, where each outcome is defined by how one specific input",
            "relates to the wider context that informs the recommender system."]
 
 class Graphics:

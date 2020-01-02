@@ -6,14 +6,13 @@ import urllib.request
 from PIL import Image
 from io import BytesIO
 
-lim_coord = [12.291284137813543, 45.41960958653527, 12.372472707313529, 45.46473083343668]
+lim_coord = [12.29609707081636, 45.41960958653527, 12.368291065858616, 45.46473083343668]
 lim_width = lim_coord[2]-lim_coord[0]
 lim_height = lim_coord[3]-lim_coord[1]
 cellSize = lim_width/3360
 
 nrCellsX = int(lim_width/cellSize)
 nrCellsY = int(lim_height/cellSize)
-
 
 grid = [[ [] for _ in range(nrCellsY)]
             for _ in range(nrCellsX)]

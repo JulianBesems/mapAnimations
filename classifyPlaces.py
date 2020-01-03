@@ -118,7 +118,7 @@ def makeLocations(grid):
     return groups
 
 def exportGridtoRhino(grid):
-    with open("VeniceGrid1.csv", 'w') as newcsvfile:
+    with open("VeniceGrid2.csv", 'w') as newcsvfile:
         writer = csv.writer(newcsvfile)
         for i in range(len(grid)):
             for j in range(len(grid[0])):

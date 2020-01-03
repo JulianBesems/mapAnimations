@@ -1,6 +1,6 @@
 import time, random, datetime, pygame
 from threading import Thread
-from testGraphics import Graphics
+from mapGraphics import Graphics
 
 class Main:
     def __init__(self):

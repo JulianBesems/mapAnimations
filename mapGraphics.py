@@ -1,4 +1,4 @@
-import pygame, sys, random, time, csv, ast, requests, math
+import pygame, sys, random, time, csv, ast, requests, math, pickle
 from io import BytesIO
 from PIL import Image
 from urllib.request import urlopen
@@ -34,26 +34,22 @@ class Graphics:
     buffer = int(screen_height/100)
     ps = int(buffer/10)
 
-    lim_coord = [12.29609707081636, 45.41960958653527, 12.368291065858616, 45.46473083343668]
-    lim_width = lim_coord[2]-lim_coord[0]
-    lim_height = lim_coord[3]-lim_coord[1]
-    map_centre = [lim_width/2 + lim_coord[0],
-                    lim_height/2 + lim_coord[1]]
+    lim_coord = [45.41960958653527, 12.29609707081636, 45.46473083343668, 12.368291065858616]
+    lim_width = lim_coord[3]-lim_coord[1]
+    lim_height = lim_coord[2]-lim_coord[0]
+    map_centre = [lim_width/2 + lim_coord[1],
+                    lim_height/2 + lim_coord[0]]
 
     scaling = min(screen_width/lim_width, screen_height/lim_height)
     monthRange = [0,12]
-    yearRange = [2003, 2019]
-
-    picFile = "imagesCColourA.csv"
+    yearRange = [2003, 2020]
 
     def __init__(self):
         self._screen = pygame.display.set_mode((self.screen_width, self.screen_height), pygame.FULLSCREEN)
-        self.photos = []
-        with open(self.picFile) as csvfile:
-            reader = csv.reader(csvfile)
-            for r in reader:
-                r[0] = ast.literal_eval(r[0])
-                if r[4]:
-                    self.photos.append(r)
+        with open ("picsSorted.p", 'rb') as fp:
+            self.photos = pickle.load(fp)
+        with open ("userDict.p", 'rb') as fp:
+            self.users = pickle.load(fp)
 
-        self.photos.sort(key = lambda x : x[2])
+    def display(self):
+        clock = pygame.time.Clock()

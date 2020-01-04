@@ -185,7 +185,7 @@ class Graphics:
                     if pressedL:
                         showingPhoto = p
                     if pressedR:
-                        if p not in chosenPhotos:
+                        if p not in self.chosenPhotos:
                             chosenPhoto = p
 
         if chosenPhoto:
@@ -201,8 +201,6 @@ class Graphics:
                 self.draw_connection(self.connected[i][0], self.connected[i+1][0], colour)
                 self.draw_photo(self.connected[i], self.ps * 5, "cross")
             self.draw_photo(self.connected[-1], self.ps * 5, "cross")
-            #self.draw_connection(self.connected[0][0], self.connected[-1][0], [255,255,255])
-
 
     def drawMouse(self):
         mouseP = pygame.mouse.get_pos()
@@ -220,12 +218,12 @@ class Graphics:
         sW = step * self.lim_width
         vH = dir[1] * sH
         vW = dir[0] * sW
-        self.lim_coord = [self.lim_coord[0] + vW, self.lim_coord[1] + vH,
-                        self.lim_coord[2] + vW, self.lim_coord[3] + vH]
-        self.lim_width = self.lim_coord[2]-self.lim_coord[0]
-        self.lim_height = self.lim_coord[3]-self.lim_coord[1]
-        self.map_centre = [(self.lim_coord[2]-self.lim_coord[0])/2 + self.lim_coord[0],
-                        (self.lim_coord[3]-self.lim_coord[1])/2 + self.lim_coord[1]]
+        self.lim_coord = [self.lim_coord[0] + vH, self.lim_coord[1] + vW,
+                        self.lim_coord[2] + vH, self.lim_coord[3] + vW]
+        self.lim_width = self.lim_coord[3]-self.lim_coord[1]
+        self.lim_height = self.lim_coord[2]-self.lim_coord[0]
+        self.map_centre = [self.lim_width/2 + self.lim_coord[1],
+                        self.lim_height/2 + self.lim_coord[0]]
 
         self.scaling = min(self.screen_width/self.lim_width, self.screen_height/self.lim_height)
 
@@ -252,24 +250,28 @@ class Graphics:
         vr = ((pos[0] - self.screen_width / 2 )/ (self.screen_width/2), (self.screen_height /2 - pos [1])/(self.screen_height /2))
         self.move(vr, rate/2)
 
-    def checkZoom(self):
-        for event in pygame.event.get():
+    def checkZoom(self, events):
+        for event in events:
             if event.type == pygame.MOUSEBUTTONDOWN:
                 if event.button == 4:
                     self.zoom("out")
-                    #self.move((1,0), 1/15)
+                    self.RedrawBackground = True
                 if event.button == 5:
                     self.zoom("in")
-                    #self.move((-1,0), 1/15)
+                    self.RedrawBackground = True
             elif event.type == pygame.KEYDOWN:
                 if event.key == pygame.K_LEFT:
                     self.move((-1,0), 1/15)
+                    self.RedrawBackground = True
                 if event.key == pygame.K_RIGHT:
                     self.move((1,0), 1/15)
+                    self.RedrawBackground = True
                 if event.key == pygame.K_UP:
                     self.move((0,1), 1/15)
+                    self.RedrawBackground = True
                 if event.key == pygame.K_DOWN:
                     self.move((0,-1), 1/15)
+                    self.RedrawBackground = True
 
     # Draw the wait screen
     def waitScreen(self):
@@ -311,7 +313,44 @@ class Graphics:
         self._screen.blit(userText, (self.screen_centre[0] - int(ptw/2), self.screen_centre[1] - int(pth/2) + 2*self.buffer))
 
     def recommendScreen(self):
-        pass
+        self._screen.fill(pygame.Color('black'))
+        self.connection_surface.fill((0,0,0,0))
+        connected = []
+
+        for p in self.chosenPhotos:
+            connected.extend(self.users[p[1]])
+            connected.remove(p)
+
+        groups = []
+        for a in connected:
+            group = [a]
+            ca = self.map_coordinate(a[0])
+            for b in connected:
+                cb = self.map_coordinate(b[0])
+                ab = [ca[0]-cb[0], ca[1] - cb[1]]
+                if math.sqrt(ab[0]**2 + ab[1]**2) < (self.buffer * 3):
+                    group.append(b)
+                    connected.remove(b)
+            groups.append(group)
+
+        if len(groups) > 0:
+            for g in groups:
+                if len(g) >= 2:
+                    for i in range(len(g)-1):
+                        self.draw_connection(g[i][0], g[i+1][0], (200,200,200))
+
+            for g in groups:
+                for c in g:
+                    self.draw_photo(c, self.ps * 3, "cross", (200,200,200))
+
+        if len(self.chosenPhotos) > 1:
+            for i in range(len(self.chosenPhotos)-1):
+                self.draw_connection(self.chosenPhotos[i][0], self.chosenPhotos[i+1][0], (200,50,50))
+
+        for p in self.chosenPhotos:
+            self.draw_photo(p, self.ps * 7, "cross", (200,50,50))
+
+        self._screen.blit(self.connection_surface, [0,0])
 
     def exploreScene(self):
         #self.checkZoom()
@@ -327,6 +366,10 @@ class Graphics:
         cellPhotos = self.getGridCell()
         if cellPhotos:
             self.drawSelectedPhotos(cellPhotos)
+
+        if self.chosenPhotos:
+            for c in self.chosenPhotos:
+                self.draw_photo(c, self.ps * 7, "cross")
 
         self.drawMouse()
 
@@ -345,7 +388,8 @@ class Graphics:
 
         # Animation loop
         while True:
-            for event in pygame.event.get():
+            events = pygame.event.get()
+            for event in events:
                 # Check exit
                 if event.type == pygame.QUIT:
                     pygame.quit()
@@ -385,6 +429,7 @@ class Graphics:
                             if self.chosenPhotos:
                                 self.chosenPhotos.remove(self.chosenPhotos[-1])
 
+
             # Check for the wait screen
             if self.Wait:
                 self.waitScreen()
@@ -399,6 +444,7 @@ class Graphics:
                 self.recommendScreen()
 
             else:
+                self.checkZoom(events)
                 self.exploreScene()
 
             pygame.display.update()

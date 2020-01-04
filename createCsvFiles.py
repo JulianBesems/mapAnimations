@@ -43,6 +43,7 @@ with open("picsSorted.p", "wb") as fp:
     pickle.dump(photos, fp, protocol = pickle.HIGHEST_PROTOCOL)"""
 
 """
+"""
 with open ("picsSorted.p", 'rb') as fp:
     photos = pickle.load(fp)
 
@@ -69,7 +70,7 @@ difflat = maxlat - minlat
 difflon = maxlon - minlon
 print([minlat, maxlat, minlon, maxlon])
 print([difflat, difflon])
-
+"""
 cellSize = 0.0001
 
 nrCellsX = int(difflon/cellSize) + 1
@@ -87,6 +88,7 @@ def placeInGrid(p, g):
     if (xc < nrCellsX and yc < nrCellsY) and (xc > 0 and yc > 0):
         g[xc][yc].append(p)
 
+
 for p in photos:
     placeInGrid(p, grid)
 
@@ -95,7 +97,7 @@ with open("photoGrid.p", "wb") as fp:
 """
 
 
-with open ("photoGrid.p", 'rb') as fp:
+"""with open ("photoGrid.p", 'rb') as fp:
     grid = pickle.load(fp)
 
 
@@ -107,4 +109,4 @@ def exportGridtoRhino(grid):
                 if grid[i][j]:
                     writer.writerow([i, j, len(grid[i][j])])
 
-exportGridtoRhino(grid)
+exportGridtoRhino(grid)"""

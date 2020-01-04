@@ -394,9 +394,9 @@ class Graphics:
                 pygame.draw.rect(self._screen, [0,0,0],
                                 pygame.Rect((50, self.screen_height - 50), (200, 50)))
                 self._screen.blit(dateText, (50, self.screen_height - 50))
+                frame += 1
                 if frame * step >= len(self.photos):
                     buildup = False
-                frame += 1
 
             elif ShowData:
                 self._screen.fill(pygame.Color('black'))

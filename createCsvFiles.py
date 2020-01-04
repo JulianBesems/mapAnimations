@@ -1,20 +1,8 @@
 import csv, ast, pickle
 from colors import rgb, hex
 
-"""
-users = getUsers(photos)
-
-with open("userDict.p", "wb") as fp:
-    pickle.dump(users, fp, protocol = pickle.HIGHEST_PROTOCOL)
-
-with open ("userDict.p", 'rb') as fp:
-    data = pickle.load(fp)
-
-print(data["67011548@N00"])
-
-fileName = "imagesCColourA.csv"
-
-photos = []
+with open ("picsSorted.p", 'rb') as fp:
+    photos = pickle.load(fp)
 
 def getUsers(photos):
     u = []
@@ -27,6 +15,31 @@ def getUsers(photos):
         users[i[1]].append(i)
     return users
 
+users = getUsers(photos)
+
+with open("userDict.p", "wb") as fp:
+    pickle.dump(users, fp, protocol = pickle.HIGHEST_PROTOCOL)
+"""
+with open ("userDict.p", 'rb') as fp:
+    data = pickle.load(fp)
+
+print(data["67011548@N00"])
+
+fileName = "imagesCColourA.csv"
+
+photos = []
+"""
+def getUsers(photos):
+    u = []
+    for p in photos:
+        user = (p[1], [])
+        if user not in u:
+            u.append(user)
+    users = {key : value for (key, value) in u}
+    for i in photos:
+        users[i[1]].append(i)
+    return users
+"""
 with open(fileName) as csvfile:
     reader = csv.reader(csvfile)
     for r in reader:
@@ -40,10 +53,8 @@ with open(fileName) as csvfile:
     photos.sort(key = lambda x: x[2])
 
 with open("picsSorted.p", "wb") as fp:
-    pickle.dump(photos, fp, protocol = pickle.HIGHEST_PROTOCOL)"""
+    pickle.dump(photos, fp, protocol = pickle.HIGHEST_PROTOCOL)
 
-"""
-"""
 with open ("picsSorted.p", 'rb') as fp:
     photos = pickle.load(fp)
 
@@ -70,7 +81,7 @@ difflat = maxlat - minlat
 difflon = maxlon - minlon
 print([minlat, maxlat, minlon, maxlon])
 print([difflat, difflon])
-"""
+
 cellSize = 0.0001
 
 nrCellsX = int(difflon/cellSize) + 1
@@ -94,10 +105,10 @@ for p in photos:
 
 with open("photoGrid.p", "wb") as fp:
     pickle.dump(grid, fp, protocol = pickle.HIGHEST_PROTOCOL)
-"""
 
 
-"""with open ("photoGrid.p", 'rb') as fp:
+
+with open ("photoGrid.p", 'rb') as fp:
     grid = pickle.load(fp)
 
 

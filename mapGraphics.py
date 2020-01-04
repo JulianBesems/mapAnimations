@@ -56,9 +56,13 @@ class Graphics:
     Recommend = False
     ShowInfo = False
     shownUsers = []
+    previousPhotoUrl = None
+    previousPhoto = None
     shownPhotos = []
     chosenPhotos = []
     baseScreen = None
+
+    connected = []
 
     minlat = 45.327555
     minlon = 12.198333
@@ -130,10 +134,13 @@ class Graphics:
     def showPhoto(self, p):
         imageUrl = p[3]
         try:
-            imageStr = urlopen(imageUrl).read()
-            im = BytesIO(imageStr)
-            #im = im.resize((150,150))
-            photo = pygame.image.load(im)
+            if imageUrl == self.previousPhotoUrl:
+                photo = self.previousPhoto
+            else:
+                imageStr = urlopen(imageUrl).read()
+                im = BytesIO(imageStr)
+                #im = im.resize((150,150))
+                photo = pygame.image.load(im)
             rect = photo.get_rect()
             pLoc = self.map_coordinate(p[0])
             pygame.draw.line(self.connection_surface, tuple(hex(p[4]).rgb), pLoc,
@@ -143,6 +150,8 @@ class Graphics:
             pygame.draw.line(self.connection_surface, tuple(hex(p[4]).rgb), pLoc,
             rect.bottomright, 1)
             self.connection_surface.blit(photo, [0,0])
+            self.previousPhotoUrl = imageUrl
+            self.previousPhoto = photo
         except OSError:
             return None
 
@@ -158,7 +167,7 @@ class Graphics:
     def drawSelectedPhotos(self, photos):
         showingPhoto = None
         chosenPhoto = None
-        connected = []
+        self.connected = []
         for p in photos:
             date = datetime.fromtimestamp(int(p[2]))
             if ((self.yearRange[0] <= date.year <= self.yearRange[1]) and
@@ -170,7 +179,7 @@ class Graphics:
                 photoRect = pygame.Rect(centre, (radius,radius))
                 if photoRect.collidepoint(pygame.mouse.get_pos()):
                     self.draw_photo(p, self.ps * 7, "cross")
-                    connected.extend(self.users[p[1]])
+                    self.connected.extend(self.users[p[1]])
                     pressedL = pygame.mouse.get_pressed()[0]
                     pressedR = pygame.mouse.get_pressed()[2]
                     if pressedL:
@@ -180,17 +189,19 @@ class Graphics:
                             chosenPhoto = p
 
         if chosenPhoto:
-            chosenPhotos.append(chosenPhoto)
+            self.chosenPhotos.append(chosenPhoto)
+
         if showingPhoto:
             self.showPhoto(showingPhoto)
-            self.showLocation(str(showingPhoto[0][1]) + ", " + str(showingPhoto[0][0]))
+            self.showLocation(str(showingPhoto[0][0]) + ", " + str(showingPhoto[0][1]))
 
-        if len(connected) > 1:
-            for i in range(len(connected)-1):
-                colour = self.getUserColor(connected[i][1])
-                self.draw_connection(connected[i][0], connected[i+1][0], colour)
-                self.draw_photo(connected[i], self.ps * 50, "cross")
-            self.draw_photo(connected[i+1], self.ps * 5, "cross")
+        if len(self.connected) > 1:
+            for i in range(len(self.connected)-1):
+                colour = self.getUserColor(self.connected[i][1])
+                self.draw_connection(self.connected[i][0], self.connected[i+1][0], colour)
+                self.draw_photo(self.connected[i], self.ps * 5, "cross")
+            self.draw_photo(self.connected[-1], self.ps * 5, "cross")
+            #self.draw_connection(self.connected[0][0], self.connected[-1][0], [255,255,255])
 
 
     def drawMouse(self):
@@ -358,7 +369,7 @@ class Graphics:
                         else:
                             self.ShowData = True
                     # Return shows the recommended spaces
-                    if event.key == pygame.K_RETURN and chosenPhotos:
+                    if event.key == pygame.K_RETURN and self.chosenPhotos:
                         if self.Recommend:
                             self.Recommend = False
                         else:

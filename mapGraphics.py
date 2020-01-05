@@ -50,7 +50,7 @@ class Graphics:
     frame = 0
     step = 2000
     RedrawBackground = True
-    Wait = False
+    Wait = True
     Buildup = False
     ShowData = False
     Recommend = False
@@ -202,6 +202,58 @@ class Graphics:
                 self.draw_photo(self.connected[i], self.ps * 5, "cross")
             self.draw_photo(self.connected[-1], self.ps * 5, "cross")
 
+    def timeSlider(self):
+        widthm = self.buffer * 12
+        widthy = self.buffer * (2020-2003)
+        startxm = self.screen_centre[0] - int(widthm/2)
+        startxy = self.screen_centre[0] - int(widthy/2)
+        mStep = int(widthm/12)
+        yStep = int(widthy/(2020-2003))
+        mouseP = pygame.mouse.get_pos()
+        for i in range(12):
+            box = pygame.Rect((startxm + i*mStep, self.buffer * 5 - 3 * self.ps),
+                            (mStep, 6 * self.ps))
+            if box.collidepoint(mouseP):
+                mText = myfontS.render(str(i+1), False, (255,255,255))
+                self._screen.blit(mText, (box.left + 3*self.ps, self.buffer * 5 + 4 * self.ps))
+                if pygame.mouse.get_pressed()[0] and i < self.monthRange[1]:
+                    self.monthRange[0] = i
+                    self.RedrawBackground = True
+                if pygame.mouse.get_pressed()[2] and i >= self.monthRange[0]:
+                    self.monthRange[1] = i+1
+                    self.RedrawBackground = True
+
+        for i in range((2020-2003)):
+            box = pygame.Rect((startxy + i*yStep, self.buffer * 3 - 3 * self.ps),
+                            (yStep, 6 * self.ps))
+            if box.collidepoint(mouseP):
+                yText = myfontS.render(str(i+2003), False, (255,255,255))
+                self._screen.blit(yText, (box.left, self.buffer * 3 + 4 * self.ps))
+                if pygame.mouse.get_pressed()[0] and (i+2003) < self.yearRange[1]:
+                    self.yearRange[0] = i+2003
+                    self.RedrawBackground = True
+                if pygame.mouse.get_pressed()[2] and (i+2003) >= self.yearRange[0]:
+                    self.yearRange[1] = i+2004
+                    self.RedrawBackground = True
+
+        yRect = pygame.Rect((startxm + self.monthRange[0] * mStep, self.buffer * 5 - 3*self.ps),
+                        ((self.monthRange[1]-self.monthRange[0]) * mStep, 6 * self.ps))
+        mRect = pygame.Rect((startxy + (self.yearRange[0] - 2003) * yStep, self.buffer * 3 - 3*self.ps),
+                        ((self.yearRange[1]-self.yearRange[0]) * yStep, 6 * self.ps))
+        pygame.draw.rect(self._screen, (100,100,100), yRect)
+        pygame.draw.rect(self._screen, (100,100,100), mRect)
+
+        pygame.draw.line(self._screen, (250,250,250), (startxm, self.buffer * 5),
+                        (startxm + widthm, self.buffer * 5), self.ps)
+        pygame.draw.line(self._screen, (250,250,250), (startxy, self.buffer * 3),
+                        (startxy + widthy, self.buffer * 3), self.ps)
+        for i in range(13):
+            pygame.draw.line(self._screen, (200,200,200), (startxm + i*mStep, self.buffer * 5 - 3 * self.ps),
+                            (startxm + i*mStep, self.buffer * 5 + 3 * self.ps), 1)
+        for j in range((2020-2003)+1):
+            pygame.draw.line(self._screen, (200,200,200), (startxy + j*yStep, self.buffer * 3 - 3 * self.ps),
+                            (startxy + j*yStep, self.buffer * 3 + 3 * self.ps), 1)
+
     def drawMouse(self):
         mouseP = pygame.mouse.get_pos()
         pygame.draw.line(self.cursor_surface, (100,100,100), (mouseP[0], 0), (mouseP[0], self.screen_height), 1)
@@ -212,6 +264,25 @@ class Graphics:
         latWidth = latText.get_size()[0]
         self.cursor_surface.blit(latText, (self.screen_width - latWidth - self.buffer, mouseP[1] + self.buffer))
         self.cursor_surface.blit(lonText, (mouseP[0] + self.buffer, self.buffer))
+
+    def showInfo(self):
+        iTexts = []
+        for i in infoText:
+            iText = myfontI.render(i, False, (255,255,255))
+            iTexts.append(iText)
+
+        tw, th = iTexts[0].get_size()
+        w, h = (tw + 5 * self.buffer, len(iTexts) * (th + self.ps) + 3 * self.buffer)
+        infoBox = pygame.Rect((self.screen_centre[0] - int(w/2) + self.buffer, self.screen_centre[1] - int(h/2)),
+            (w, h))
+        pygame.draw.rect(self._screen, [0,0,0],
+                        infoBox)
+        pygame.draw.rect(self._screen, [255,255,255],
+                    infoBox, 3* self.ps - 1)
+
+        for j in range(len(iTexts)):
+            gap = (j  - int(len(iTexts)/2)) * (th + self.ps)
+            self._screen.blit(iTexts[j], (self.screen_centre[0] - int(tw/2), self.screen_centre[1] - int(th/2) + gap))
 
     def move(self, dir, step):
         sH = step * self.lim_height
@@ -353,14 +424,16 @@ class Graphics:
         self._screen.blit(self.connection_surface, [0,0])
 
     def exploreScene(self):
-        #self.checkZoom()
         self.cursor_surface.fill((0,0,0,0))
         self.connection_surface.fill((0,0,0,0))
 
         if self.RedrawBackground:
             self.photo_surface.fill(pygame.Color('black'))
             for p in self.photos:
-                self.draw_photo(p, self.ps, "circle")
+                date = datetime.fromtimestamp(int(p[2]))
+                if ((self.yearRange[0] <= date.year <= self.yearRange[1]) and
+                    (self.monthRange[0] <= date.month <= self.monthRange[1])):
+                    self.draw_photo(p, self.ps, "circle")
             self.RedrawBackground = False
 
         cellPhotos = self.getGridCell()
@@ -377,6 +450,7 @@ class Graphics:
         self._screen.blit(self.connection_surface, [0,0])
         self._screen.blit(self.cursor_surface, [0,0])
 
+        self.timeSlider()
 
     # Display the graphics
     def display(self):
@@ -420,10 +494,17 @@ class Graphics:
                             self.Recommend = True
                     # R restarts the timeline animation
                     if event.key == pygame.K_r:
-                        self.buildup = True
+                        self.Buildup = False
                         self.frame = 0
-                        self.wait = True
+                        self.Wait = True
                         self._screen.fill(pygame.Color('black'))
+                        self.photo_surface.fill(pygame.Color('black'))
+
+                    if event.key == pygame.K_i:
+                            if self.ShowInfo:
+                                self.ShowInfo = False
+                            else:
+                                self.ShowInfo = True
 
                     if event.key == pygame.K_BACKSPACE:
                             if self.chosenPhotos:
@@ -446,6 +527,8 @@ class Graphics:
             else:
                 self.checkZoom(events)
                 self.exploreScene()
+                if self.ShowInfo:
+                    self.showInfo()
 
             pygame.display.update()
             clock.tick()

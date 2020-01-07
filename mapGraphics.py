@@ -215,7 +215,7 @@ class Graphics:
                             (mStep, 6 * self.ps))
             if box.collidepoint(mouseP):
                 mText = myfontS.render(str(i+1), False, (255,255,255))
-                self._screen.blit(mText, (box.left + 3*self.ps, self.buffer * 5 + 4 * self.ps))
+                self.cursor_surface.blit(mText, (box.left + 3*self.ps, self.buffer * 5 + 4 * self.ps))
                 if pygame.mouse.get_pressed()[0] and i < self.monthRange[1]:
                     self.monthRange[0] = i
                     self.RedrawBackground = True
@@ -228,7 +228,7 @@ class Graphics:
                             (yStep, 6 * self.ps))
             if box.collidepoint(mouseP):
                 yText = myfontS.render(str(i+2003), False, (255,255,255))
-                self._screen.blit(yText, (box.left, self.buffer * 3 + 4 * self.ps))
+                self.cursor_surface.blit(yText, (box.left, self.buffer * 3 + 4 * self.ps))
                 if pygame.mouse.get_pressed()[0] and (i+2003) < self.yearRange[1]:
                     self.yearRange[0] = i+2003
                     self.RedrawBackground = True
@@ -240,18 +240,18 @@ class Graphics:
                         ((self.monthRange[1]-self.monthRange[0]) * mStep, 6 * self.ps))
         mRect = pygame.Rect((startxy + (self.yearRange[0] - 2003) * yStep, self.buffer * 3 - 3*self.ps),
                         ((self.yearRange[1]-self.yearRange[0]) * yStep, 6 * self.ps))
-        pygame.draw.rect(self._screen, (100,100,100), yRect)
-        pygame.draw.rect(self._screen, (100,100,100), mRect)
+        pygame.draw.rect(self.cursor_surface, (100,100,100), yRect)
+        pygame.draw.rect(self.cursor_surface, (100,100,100), mRect)
 
-        pygame.draw.line(self._screen, (250,250,250), (startxm, self.buffer * 5),
+        pygame.draw.line(self.cursor_surface, (250,250,250), (startxm, self.buffer * 5),
                         (startxm + widthm, self.buffer * 5), self.ps)
-        pygame.draw.line(self._screen, (250,250,250), (startxy, self.buffer * 3),
+        pygame.draw.line(self.cursor_surface, (250,250,250), (startxy, self.buffer * 3),
                         (startxy + widthy, self.buffer * 3), self.ps)
         for i in range(13):
-            pygame.draw.line(self._screen, (200,200,200), (startxm + i*mStep, self.buffer * 5 - 3 * self.ps),
+            pygame.draw.line(self.cursor_surface, (200,200,200), (startxm + i*mStep, self.buffer * 5 - 3 * self.ps),
                             (startxm + i*mStep, self.buffer * 5 + 3 * self.ps), 1)
         for j in range((2020-2003)+1):
-            pygame.draw.line(self._screen, (200,200,200), (startxy + j*yStep, self.buffer * 3 - 3 * self.ps),
+            pygame.draw.line(self.cursor_surface, (200,200,200), (startxy + j*yStep, self.buffer * 3 - 3 * self.ps),
                             (startxy + j*yStep, self.buffer * 3 + 3 * self.ps), 1)
 
     def drawMouse(self):
@@ -305,16 +305,16 @@ class Graphics:
         sW = self.lim_width * rate
         sH = self.lim_height * rate
         if arg == "in":
-            self.lim_coord = [self.lim_coord[0] + sW, self.lim_coord[1] + sH,
-                            self.lim_coord[2] - sW, self.lim_coord[3] - sH]
+            self.lim_coord = [self.lim_coord[0] + sH, self.lim_coord[1] + sW,
+                            self.lim_coord[2] - sH, self.lim_coord[3] - sW]
         if arg == "out":
-            self.lim_coord = [self.lim_coord[0] - sW, self.lim_coord[1] - sH,
-                            self.lim_coord[2] + sW, self.lim_coord[3] + sH]
+            self.lim_coord = [self.lim_coord[0] - sH, self.lim_coord[1] - sW,
+                            self.lim_coord[2] + sH, self.lim_coord[3] + sW]
 
-        self.lim_width = self.lim_coord[2]-self.lim_coord[0]
-        self.lim_height = self.lim_coord[3]-self.lim_coord[1]
-        self.map_centre = [(self.lim_coord[2]-self.lim_coord[0])/2 + self.lim_coord[0],
-                        (self.lim_coord[3]-self.lim_coord[1])/2 + self.lim_coord[1]]
+        self.lim_width = self.lim_coord[3]-self.lim_coord[1]
+        self.lim_height = self.lim_coord[2]-self.lim_coord[0]
+        self.map_centre = [self.lim_width/2 + self.lim_coord[1],
+                        self.lim_height/2 + self.lim_coord[0]]
 
         self.scaling = min(self.screen_width/self.lim_width, self.screen_height/self.lim_height)
 
@@ -445,12 +445,11 @@ class Graphics:
                 self.draw_photo(c, self.ps * 7, "cross")
 
         self.drawMouse()
+        self.timeSlider()
 
         self._screen.blit(self.photo_surface, [0,0])
         self._screen.blit(self.connection_surface, [0,0])
         self._screen.blit(self.cursor_surface, [0,0])
-
-        self.timeSlider()
 
     # Display the graphics
     def display(self):
@@ -494,11 +493,12 @@ class Graphics:
                             self.Recommend = True
                     # R restarts the timeline animation
                     if event.key == pygame.K_r:
-                        self.Buildup = False
+                        self.Buildup = True
                         self.frame = 0
                         self.Wait = True
                         self._screen.fill(pygame.Color('black'))
                         self.photo_surface.fill(pygame.Color('black'))
+                        self.RedrawBackground = True
 
                     if event.key == pygame.K_i:
                             if self.ShowInfo:

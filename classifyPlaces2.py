@@ -13,7 +13,7 @@ from sklearn.preprocessing import StandardScaler, MinMaxScaler
 count = 0
 
 class Cell:
-    divisions = 3
+    divisions = 2
     def __init__(self, photos, limits):
         self.photos = photos
         self.limits = limits
@@ -34,10 +34,11 @@ class Cell:
             coordPhotos = scaler.fit_transform(np.array(coordPhotos))
             xKS = stats.kstest(coordPhotos[:,0], 'uniform')
             yKS = stats.kstest(coordPhotos[:,1], 'uniform')
-            if xKS[0] < 0.1 and yKS[0] < 0.1 and xKS[1] > 0.1 and yKS[1] > 0.1:
-                print("Uniform")
-                print(self.limits[0], self.limits[1])
-                print(self.limits[2], self.limits[3])
+            if xKS[0] < 0.15 and yKS[0] < 0.15 and xKS[1] > 0.7 and yKS[1] > 0.7:
+
+                #print("Uniform")
+                #print(self.limits[0], self.limits[2])
+                #print(self.limits[1], self.limits[3])
                 return True
             else:
                 return False
@@ -48,11 +49,14 @@ class Cell:
         difflat = self.limits[1] - self.limits[0]
         difflon = self.limits[3] - self.limits[2]
         cellSize = min(difflat,difflon) / self.divisions
-        cellDimensions = [difflon/int(difflon/cellSize), difflat/int(difflat/cellSize)]
-        grid = [[ [] for _ in range(int(difflat/cellSize))]
-            for _ in range(int(difflon/cellSize))]
+        cellDimensions = [difflon/round(difflon/cellSize), difflat/round(difflat/cellSize)]
+
+        grid = [[ [] for _ in range(round(difflat/cellDimensions[1]))]
+            for _ in range(round(difflon/cellDimensions[0]))]
+
         for p in self.photos:
             self.placeInGrid(p, grid, cellDimensions)
+
         for i in range(len(grid)):
             for j in range(len(grid[0])):
                 minlon = self.limits[2] + (i * cellDimensions[0])
@@ -67,12 +71,11 @@ class Cell:
         x = p[0][1] - self.limits[2]
 
         xc = int(x/cDim[0])
-        if x == xc * cDim[0]:
-            xc = len(g)-1
-
+        if x/cDim[0] == len(g):
+            xc -= 1
         yc = int(y/cDim[1])
-        if y == yc * cDim[1]:
-            yc = len(g[0])-1
+        if y/cDim[1] == len(g[0]):
+            yc -= 1
 
         if (xc < len(g) and yc < len(g[0])) and (x >= 0 and y >= 0):
             g[xc][yc].append(p)
@@ -81,47 +84,44 @@ class LocationGrid:
     def __init__(self):
         self.photos = self.getPhotos()
         self.limits = self.getValues(self.photos)
-        self.photos = self.preprocessPhotos(self.photos)
+        #self.photos = self.preprocessPhotos(self.photos)
         self.grid = Cell(self.photos, self.limits)
 
 
     def getPhotos(self):
-        with open ("picsSorted.p", 'rb') as fp:
+        #with open ("picsSorted.p", 'rb') as fp:
+        with open ("preprocessedPhotos-00005.p", 'rb') as fp:
             photos = pickle.load(fp)
         return photos
 
     def preprocessPhotos(self, photos):
-        cellSize = 0.00001
+        cellSize = 0.0001
         difflat = self.limits[1] - self.limits[0]
         difflon = self.limits[3] - self.limits[2]
         xCells = int(difflon/cellSize) + 1
         yCells = int(difflat/cellSize) + 1
 
-        grid = [[ [] for _ in range(yCells)]
-            for _ in range(xCells)]
+        grid = np.zeros([xCells, yCells], dtype = object)
+        print(grid[0][0])
 
         for p in photos:
             y = p[0][0] - self.limits[0]
             x = p[0][1] - self.limits[2]
 
-            xc = int(x/cDim[0])
-            if x == xc * cDim[0]:
-                xc = len(grid)-1
-
-            yc = int(y/cDim[1])
-            if y == yc * cDim[1]:
-                yc = len(grid[0])-1
-
-            if (xc < len(ggrid) and yc < len(grid[0])) and (x >= 0 and y >= 0):
-                grid[xc][yc].append(p)
+            xc = int(x/cellSize)
+            yc = int(y/cellSize)
+            if (xc < len(grid) and yc < len(grid[0])) and (x >= 0 and y >= 0) and not grid[xc][yc]:
+                grid[xc][yc] = p
 
         processedPhotos = []
         for a in grid:
-            for b in grid:
+            for b in a:
                 if b:
-                    processedPhotos.append(b[0])
+                    processedPhotos.append(b)
 
-        print("Processed")
+        print("processed")
+        with open("preprocessedPhotos-0001.p", "wb") as fp:
+            pickle.dump(processedPhotos, fp, protocol = pickle.HIGHEST_PROTOCOL)
         return processedPhotos
 
 
@@ -143,4 +143,6 @@ class LocationGrid:
 
         return(minlat, maxlat, minlon, maxlon)
 
-lcGrid = LocationGrid()
+"""lcGrid = LocationGrid()
+with open("locationGrid,2,00005,015.p", "wb") as fp:
+    pickle.dump(lcGrid, fp, protocol = pickle.HIGHEST_PROTOCOL)"""

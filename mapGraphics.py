@@ -11,6 +11,7 @@ from colorhash import ColorHash
 from shapely import geometry
 from classifyPlaces import *
 from copy import copy
+from classifyPlaces2 import LocationGrid, Cell
 
 pygame.font.init()
 myfont = pygame.font.Font('/Users/julianbesems/Library/Fonts/HELR45W.ttf', 22)
@@ -50,11 +51,12 @@ class Graphics:
     frame = 0
     step = 2000
     RedrawBackground = True
-    Wait = True
+    Wait = False
     Buildup = False
     ShowData = False
     Recommend = False
     ShowInfo = False
+    LocationGridShow = True
     shownUsers = []
     previousPhotoUrl = None
     previousPhoto = None
@@ -79,6 +81,8 @@ class Graphics:
 
         with open ("picsSorted.p", 'rb') as fp:
             self.photos = pickle.load(fp)
+        #with open ("preprocessedPhotos.p", 'rb') as fp:
+        #    self.photos = pickle.load(fp)
         with open ("userDict.p", 'rb') as fp:
             self.users = pickle.load(fp)
         with open ("photoGrid.p", 'rb') as fp:
@@ -451,6 +455,28 @@ class Graphics:
         self._screen.blit(self.connection_surface, [0,0])
         self._screen.blit(self.cursor_surface, [0,0])
 
+    def getLocations(self, cell, locations):
+        if cell.uniform:
+            locations.append(cell)
+        else:
+            for r in cell.subcells:
+                for c in r:
+                    self.getLocations(c, locations)
+
+    def locationGridScreen(self):
+        with open ("locationGrid,2,00005,015.p", 'rb') as fp:
+            lcGrid = pickle.load(fp)
+        locations = []
+        self.getLocations(lcGrid.grid, locations)
+        self._screen.fill(pygame.Color('black'))
+        for l in locations:
+            tl = self.map_coordinate([l.limits[0], l.limits[2]])
+            br = self.map_coordinate([l.limits[1], l.limits[3]])
+            surface = ((l.limits[1]-l.limits[0]) * 100000) * ((l.limits[3]-l.limits[2]) * 100000)
+            density = len(l.photos)/surface
+            c = min(density * 600, 255)
+            pygame.draw.rect(self._screen, [c,c,c], [tl[0], tl[1], br[0]-tl[0], br[1]-tl[1]])
+
     # Display the graphics
     def display(self):
         # Setup pygame screen
@@ -485,6 +511,12 @@ class Graphics:
                             self.ShowData = False
                         else:
                             self.ShowData = True
+                    if event.key == pygame.K_g:
+                        if self.LocationGridShow:
+                            self.RedrawBackground = True
+                            self.LocationGridShow = False
+                        else:
+                            self.LocationGridShow = True
                     # Return shows the recommended spaces
                     if event.key == pygame.K_RETURN and self.chosenPhotos:
                         if self.Recommend:
@@ -523,6 +555,9 @@ class Graphics:
 
             elif self.Recommend:
                 self.recommendScreen()
+
+            elif self.LocationGridShow:
+                self.locationGridScreen()
 
             else:
                 self.checkZoom(events)

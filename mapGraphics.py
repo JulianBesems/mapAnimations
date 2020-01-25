@@ -474,7 +474,7 @@ class Graphics:
             br = self.map_coordinate([l.limits[1], l.limits[3]])
             surface = ((l.limits[1]-l.limits[0]) * 100000) * ((l.limits[3]-l.limits[2]) * 100000)
             density = len(l.photos)/surface
-            c = min(density * 600, 255)
+            c = min(density * 800, 255)
             pygame.draw.rect(self._screen, [c,c,c], [tl[0], tl[1], br[0]-tl[0], br[1]-tl[1]])
 
     # Display the graphics

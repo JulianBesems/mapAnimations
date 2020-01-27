@@ -26,7 +26,7 @@ class Cell:
     def isUniform(self):
         difflat = self.limits[1] - self.limits[0]
         difflon = self.limits[3] - self.limits[2]
-        if len(self.photos) > 1 and min(difflat, difflon) > 0.00001:
+        if len(self.photos) > 2 and min(difflat, difflon) > 0.00001:
             scaler = MinMaxScaler()
             coordPhotos = []
             for p in self.photos:
@@ -34,7 +34,9 @@ class Cell:
             coordPhotos = scaler.fit_transform(np.array(coordPhotos))
             xKS = stats.kstest(coordPhotos[:,0], 'uniform')
             yKS = stats.kstest(coordPhotos[:,1], 'uniform')
-            if xKS[0] < 0.15 and yKS[0] < 0.15 and xKS[1] > 0.7 and yKS[1] > 0.7:
+            if xKS[0] < 0.7 and yKS[0] < 0.7 and xKS[1] > 0.05 and yKS[1] > 0.05:
+                """plt.scatter(coordPhotos[:,0], coordPhotos[:,1])
+                plt.show()"""
 
                 #print("Uniform")
                 #print(self.limits[0], self.limits[2])
@@ -144,5 +146,5 @@ class LocationGrid:
         return(minlat, maxlat, minlon, maxlon)
 
 """lcGrid = LocationGrid()
-with open("locationGrid,2,00005,015.p", "wb") as fp:
+with open("locationGrid,2,00005,07,005.p", "wb") as fp:
     pickle.dump(lcGrid, fp, protocol = pickle.HIGHEST_PROTOCOL)"""

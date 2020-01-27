@@ -464,7 +464,7 @@ class Graphics:
                     self.getLocations(c, locations)
 
     def locationGridScreen(self):
-        with open ("locationGrid,2,00005,015.p", 'rb') as fp:
+        with open ("locationGrid,2,00005,07,005.p", 'rb') as fp:
             lcGrid = pickle.load(fp)
         locations = []
         self.getLocations(lcGrid.grid, locations)
@@ -475,7 +475,12 @@ class Graphics:
             surface = ((l.limits[1]-l.limits[0]) * 100000) * ((l.limits[3]-l.limits[2]) * 100000)
             density = len(l.photos)/surface
             c = min(density * 800, 255)
-            pygame.draw.rect(self._screen, [c,c,c], [tl[0], tl[1], br[0]-tl[0], br[1]-tl[1]])
+            if surface > 30:
+                c2 = min(len(l.photos), 255)#min(c*3, 255)
+                pygame.draw.rect(self._screen, [c2,c2,c2], [tl[0], tl[1], br[0]-tl[0], br[1]-tl[1]])
+                #pygame.draw.rect(self._screen, [100,c,c], [tl[0], tl[1], br[0]-tl[0], br[1]-tl[1]], True)
+            else:
+                pygame.draw.rect(self._screen, [0,0,255], [tl[0], tl[1], br[0]-tl[0], br[1]-tl[1]])
 
     # Display the graphics
     def display(self):

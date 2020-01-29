@@ -1,7 +1,7 @@
 import time, random, datetime, pygame
 from threading import Thread
 from mapGraphics import Graphics
-from classifyPlaces2 import LocationGrid, Cell
+from classifyPlaces2 import LocationGrid, Cell, Group, LocationGroups
 
 class Main:
     def __init__(self):

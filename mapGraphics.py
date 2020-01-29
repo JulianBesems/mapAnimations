@@ -11,7 +11,7 @@ from colorhash import ColorHash
 from shapely import geometry
 from classifyPlaces import *
 from copy import copy
-from classifyPlaces2 import LocationGrid, Cell
+from classifyPlaces2 import LocationGrid, Cell, Group, LocationGroups
 
 pygame.font.init()
 myfont = pygame.font.Font('/Users/julianbesems/Library/Fonts/HELR45W.ttf', 22)
@@ -147,6 +147,7 @@ class Graphics:
                 photo = pygame.image.load(im)
             rect = photo.get_rect()
             pLoc = self.map_coordinate(p[0])
+            print(p[3])
             pygame.draw.line(self.connection_surface, tuple(hex(p[4]).rgb), pLoc,
             rect.bottomleft, 1)
             pygame.draw.line(self.connection_surface, tuple(hex(p[4]).rgb), pLoc,
@@ -464,23 +465,40 @@ class Graphics:
                     self.getLocations(c, locations)
 
     def locationGridScreen(self):
-        with open ("locationGrid,2,00005,07,005.p", 'rb') as fp:
+        groups = True
+        with open ("locationGrid,2,00005,07,005,nr2.p", 'rb') as fp:
             lcGrid = pickle.load(fp)
+        with open ("locationGroupsWP-lin(8,00002).p", 'rb') as gp:
+            lGroups = pickle.load(gp)
         locations = []
         self.getLocations(lcGrid.grid, locations)
         self._screen.fill(pygame.Color('black'))
-        for l in locations:
-            tl = self.map_coordinate([l.limits[0], l.limits[2]])
-            br = self.map_coordinate([l.limits[1], l.limits[3]])
-            surface = ((l.limits[1]-l.limits[0]) * 100000) * ((l.limits[3]-l.limits[2]) * 100000)
-            density = len(l.photos)/surface
-            c = min(density * 800, 255)
-            if surface > 30:
-                c2 = min(len(l.photos), 255)#min(c*3, 255)
-                pygame.draw.rect(self._screen, [c2,c2,c2], [tl[0], tl[1], br[0]-tl[0], br[1]-tl[1]])
-                #pygame.draw.rect(self._screen, [100,c,c], [tl[0], tl[1], br[0]-tl[0], br[1]-tl[1]], True)
-            else:
-                pygame.draw.rect(self._screen, [0,0,255], [tl[0], tl[1], br[0]-tl[0], br[1]-tl[1]])
+        if not groups:
+            for l in locations:
+                tl = self.map_coordinate([l.limits[0], l.limits[2]])
+                br = self.map_coordinate([l.limits[1], l.limits[3]])
+                surface = ((l.limits[1]-l.limits[0]) * 100000) * ((l.limits[3]-l.limits[2]) * 100000)
+                density = len(l.photos)/surface
+                c = min(density * 800, 255)
+                if surface > 30:
+                    c2 = min(c*3, 255) #min(len(l.photos), 255)#
+                    pygame.draw.rect(self._screen, [c2,c2,c2], [tl[0], tl[1], br[0]-tl[0], br[1]-tl[1]])
+                    pygame.draw.rect(self._screen, [100,c,c], [tl[0], tl[1], br[0]-tl[0], br[1]-tl[1]], True)
+                else:
+                    pygame.draw.rect(self._screen, [0,0,255], [tl[0], tl[1], br[0]-tl[0], br[1]-tl[1]])
+        else:
+            maxVal = 0
+            minVal = 1
+            for g in lGroups.groups:
+                if g.value > maxVal:
+                    maxVal = g.value
+                if g.value < minVal and not g.value == 0:
+                    minVal = g.value
+                colour = g.colour #(random.randint(0,255), random.randint(0,255), random.randint(0,255))
+                for l in g.locations:
+                    tl = self.map_coordinate([l.limits[0], l.limits[2]])
+                    br = self.map_coordinate([l.limits[1], l.limits[3]])
+                    pygame.draw.rect(self._screen, colour, [tl[0], tl[1], br[0]-tl[0], br[1]-tl[1]])
 
     # Display the graphics
     def display(self):

@@ -8,6 +8,8 @@ from io import BytesIO
 from scipy import stats
 import numpy as np
 import matplotlib.pyplot as plt
+from colors import rgb, hex
+from colorhash import ColorHash
 from sklearn.preprocessing import StandardScaler, MinMaxScaler
 
 count = 0
@@ -164,15 +166,17 @@ class LocationGroups:
         self.groups = []
         self.getLocations(self.lcGrid.grid, self.locations)
         self.fillNeighbours()
-        #self.placePhotos()
+        self.groups.sort(key = lambda x: x.value, reverse = True)
+        self.placePhotos()
 
     def placePhotos(self):
         print(self.photos[0])
         print(self.limits)
-        for p in self.photos:
+        for p in range(len(self.photos)):
+            print(p)
             for g in self.groups:
-                if self.inGroup(p, g):
-                    g.photos.append(p)
+                if self.inGroup(self.photos[p], g):
+                    g.photos.append(self.photos[p])
 
 
     def inGroup(self, p, g):
@@ -300,11 +304,28 @@ class LocationGroups:
 
 #lcGroups = LocationGroups()
 
-with open ("locationGroupsWP-lin(8,00002).p", 'rb') as gp:
-    lcGroups = pickle.load(gp)
-lcGroups.placePhotos()
-with open("locationGroupsWP2-lin(8,00002).p", "wb") as fp:
-    pickle.dump(lcGroups, fp, protocol = pickle.HIGHEST_PROTOCOL)
+"""with open ("locationGroupsWP-lin(8,00002).p", 'rb') as gp:
+    lGroups = pickle.load(gp)
+
+for gr in lGroups.groups:
+    pn = 0
+    r = 0
+    g = 0
+    b = 0
+    for l in gr.locations:
+        for p in l.photos:
+            colour = tuple(hex(p[4]).rgb)
+            pn +=1
+            r += colour[0]
+            g += colour[1]
+            b += colour[2]
+    if pn == 0:
+        gr.colour = (0,0,0)
+    else:
+        gr.colour = (r/pn, g/pn, b/pn)
+
+with open("locationGroupsWP-lin(8,00002)2.p", "wb") as fp:
+    pickle.dump(lGroups, fp, protocol = pickle.HIGHEST_PROTOCOL)"""
 
 """lcGrid = LocationGrid()
 with open("locationGrid,2,00005,07,005,nr2.p", "wb") as fp:

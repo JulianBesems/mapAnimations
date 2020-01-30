@@ -1,2 +1,3 @@
 *.csv
 !imagesCColourA.csv
+ccMatrix*

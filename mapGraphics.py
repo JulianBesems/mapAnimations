@@ -12,6 +12,7 @@ from shapely import geometry
 from classifyPlaces import *
 from copy import copy
 from classifyPlaces2 import LocationGrid, Cell, Group, LocationGroups
+from recommenderGraph import CooccurenceMatrix
 
 pygame.font.init()
 myfont = pygame.font.Font('/Users/julianbesems/Library/Fonts/HELR45W.ttf', 22)
@@ -55,14 +56,17 @@ class Graphics:
     Buildup = False
     ShowData = False
     Recommend = False
+    RecommendOld = False
     ShowInfo = False
-    LocationGridShow = True
+    LocationGridShow = False
+    showGrid = True
     shownUsers = []
     previousPhotoUrl = None
     previousPhoto = None
     shownPhotos = []
     chosenPhotos = []
     baseScreen = None
+    flipMatrix = False
 
     connected = []
 
@@ -87,6 +91,8 @@ class Graphics:
             self.users = pickle.load(fp)
         with open ("photoGrid.p", 'rb') as fp:
             self.grid = pickle.load(fp)
+        with open ("ccMatrixDirProp4.p", 'rb') as fp:
+            self.ccMatrix = pickle.load(fp)
 
     def draw_screen(self, screen):
         pygame.init()
@@ -112,7 +118,7 @@ class Graphics:
         if (xc < self.nrCellsX and yc < self.nrCellsY) and (xc > 0 and yc > 0):
             return(self.grid[xc][yc])
 
-    def draw_photo(self, photo, radius, shape, c = None):
+    def draw_photo(self, photo, radius, shape, c = None, surface = None):
         centre = self.map_coordinate([photo[0][0], photo[0][1]])
         if photo[4]:
             if c:
@@ -130,10 +136,13 @@ class Graphics:
         c = ColorHash(user)
         return(c.rgb)
 
-    def draw_connection(self, c1, c2, colour):
+    def draw_connection(self, c1, c2, colour, w = None):
         p1 = self.map_coordinate(c1)
         p2 = self.map_coordinate(c2)
-        pygame.draw.line(self.connection_surface, colour, p1, p2, 1)
+        if w:
+            pygame.draw.line(self.connection_surface, colour, p1, p2, w)
+        else:
+            pygame.draw.line(self.connection_surface, colour, p1, p2, 1)
 
     def showPhoto(self, p):
         imageUrl = p[3]
@@ -187,11 +196,15 @@ class Graphics:
                     self.connected.extend(self.users[p[1]])
                     pressedL = pygame.mouse.get_pressed()[0]
                     pressedR = pygame.mouse.get_pressed()[2]
+                    pressedM = pygame.mouse.get_pressed()[1]
                     if pressedL:
                         showingPhoto = p
                     if pressedR:
                         if p not in self.chosenPhotos:
                             chosenPhoto = p
+                    if pressedM:
+                        photos = self.users[p[1]]
+                        self.chosenPhotos = photos
 
         if chosenPhoto:
             self.chosenPhotos.append(chosenPhoto)
@@ -428,6 +441,78 @@ class Graphics:
 
         self._screen.blit(self.connection_surface, [0,0])
 
+    def recommendScreen2(self):
+        nrRecommendations = 1000
+
+        self._screen.fill(pygame.Color('black'))
+        self.connection_surface.fill((0,0,0,0))
+        groups = self.ccMatrix.lcGroups
+
+        selectedGroupIndexes = []
+
+        for p in self.chosenPhotos:
+            for g in range(len(groups)):
+                if p in groups[g].photos and not g in selectedGroupIndexes:
+                    selectedGroupIndexes.append(g)
+                    break
+
+        connections = []
+        cGroupsIndexes = []
+
+        for g in selectedGroupIndexes:
+            for c in range(len(groups)):
+                if self.ccMatrix.ccMatrix[g, c] > 0 and not g == c:
+                    if not [c,0] in cGroupsIndexes:
+                         cGroupsIndexes.append([c,0])
+                    if self.flipMatrix:
+                        connections.append([g,c, self.ccMatrix.ccMatrix[c, g]])
+                    else:
+                        connections.append([g,c, self.ccMatrix.ccMatrix[g, c]])
+
+        for g in cGroupsIndexes:
+            total = 0
+            nr = 0
+            for c in connections:
+                val = (lambda x: x[2] if x[1] == g[0] else 0)(c)
+                if val > 0:
+                    nr += 1
+                    total += val
+            average = total/nr
+            g[1] = average
+
+        cGroupsIndexes.sort(key = lambda x : x[1])
+        length = min(nrRecommendations, len(cGroupsIndexes))
+        for i in range(length):
+            hotness = int((i/length)*255)
+            colour = (hotness, hotness, hotness)
+            if self.flipMatrix:
+                colour = (hotness, 0, 0)
+            for l in groups[cGroupsIndexes[i][0]].locations:
+                tl = self.map_coordinate([l.limits[0], l.limits[2]])
+                br = self.map_coordinate([l.limits[1], l.limits[3]])
+                pygame.draw.rect(self._screen, colour, [tl[0], tl[1], br[0]-tl[0], br[1]-tl[1]])
+
+        for g in selectedGroupIndexes:
+            colour = (150, 50, 50)
+            for l in groups[g].locations:
+                tl = self.map_coordinate([l.limits[0], l.limits[2]])
+                br = self.map_coordinate([l.limits[1], l.limits[3]])
+                pygame.draw.rect(self.connection_surface, colour, [tl[0], tl[1], br[0]-tl[0], br[1]-tl[1]])
+
+        if len(self.chosenPhotos) > 1:
+            for i in range(len(self.chosenPhotos)-1):
+                self.draw_connection(self.chosenPhotos[i][0], self.chosenPhotos[i+1][0], (150,50,50))
+
+        for p in self.chosenPhotos:
+            self.draw_photo(p, self.ps * 7, "cross")
+
+        self._screen.blit(self.connection_surface, [0,0])
+        if self.flipMatrix:
+            self.flipMatrix = False
+        else:
+            pass
+            #self.flipMatrix = True
+
     def exploreScene(self):
         self.cursor_surface.fill((0,0,0,0))
         self.connection_surface.fill((0,0,0,0))
@@ -465,15 +550,14 @@ class Graphics:
                     self.getLocations(c, locations)
 
     def locationGridScreen(self):
-        groups = True
         with open ("locationGrid,2,00005,07,005,nr2.p", 'rb') as fp:
             lcGrid = pickle.load(fp)
-        with open ("locationGroupsWP-lin(8,00002).p", 'rb') as gp:
+        with open ("locationGroupsWP-lin(8,00002)2.p", 'rb') as gp:
             lGroups = pickle.load(gp)
         locations = []
         self.getLocations(lcGrid.grid, locations)
         self._screen.fill(pygame.Color('black'))
-        if not groups:
+        if not self.showGrid:
             for l in locations:
                 tl = self.map_coordinate([l.limits[0], l.limits[2]])
                 br = self.map_coordinate([l.limits[1], l.limits[3]])
@@ -481,7 +565,7 @@ class Graphics:
                 density = len(l.photos)/surface
                 c = min(density * 800, 255)
                 if surface > 30:
-                    c2 = min(c*3, 255) #min(len(l.photos), 255)#
+                    c2 = min(c*5, 255) #min(len(l.photos), 255)#
                     pygame.draw.rect(self._screen, [c2,c2,c2], [tl[0], tl[1], br[0]-tl[0], br[1]-tl[1]])
                     pygame.draw.rect(self._screen, [100,c,c], [tl[0], tl[1], br[0]-tl[0], br[1]-tl[1]], True)
                 else:
@@ -494,7 +578,7 @@ class Graphics:
                     maxVal = g.value
                 if g.value < minVal and not g.value == 0:
                     minVal = g.value
-                colour = g.colour #(random.randint(0,255), random.randint(0,255), random.randint(0,255))
+                colour = g.colour #tuple(hex(g.locations[0].photos[0][4]).rgb) #(random.randint(0,255), random.randint(0,255), random.randint(0,255))
                 for l in g.locations:
                     tl = self.map_coordinate([l.limits[0], l.limits[2]])
                     br = self.map_coordinate([l.limits[1], l.limits[3]])
@@ -536,16 +620,34 @@ class Graphics:
                             self.ShowData = True
                     if event.key == pygame.K_g:
                         if self.LocationGridShow:
+                            self._screen.fill(pygame.Color('black'))
                             self.RedrawBackground = True
                             self.LocationGridShow = False
                         else:
                             self.LocationGridShow = True
+
+                    if event.key == pygame.K_SPACE:
+                        if self.LocationGridShow:
+                            if self.showGrid:
+                                self.showGrid = False
+                            else:
+                                self.showGrid = True
+
                     # Return shows the recommended spaces
                     if event.key == pygame.K_RETURN and self.chosenPhotos:
                         if self.Recommend:
+                            self._screen.fill(pygame.Color('black'))
                             self.Recommend = False
                         else:
                             self.Recommend = True
+
+                    # Return shows the old recommendation screen
+                    if event.key == pygame.K_q and self.chosenPhotos:
+                        if self.RecommendOld:
+                            self.RecommendOld = False
+                        else:
+                            self.RecommendOld = True
+
                     # R restarts the timeline animation
                     if event.key == pygame.K_r:
                         self.Buildup = True
@@ -563,7 +665,8 @@ class Graphics:
 
                     if event.key == pygame.K_BACKSPACE:
                             if self.chosenPhotos:
-                                self.chosenPhotos.remove(self.chosenPhotos[-1])
+                                if not (len(self.chosenPhotos) == 1 and self.Recommend):
+                                    self.chosenPhotos.remove(self.chosenPhotos[-1])
 
 
             # Check for the wait screen
@@ -577,6 +680,9 @@ class Graphics:
                 self.dataScreen()
 
             elif self.Recommend:
+                self.recommendScreen2()
+
+            elif self.RecommendOld:
                 self.recommendScreen()
 
             elif self.LocationGridShow:

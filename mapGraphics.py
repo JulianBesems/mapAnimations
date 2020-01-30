@@ -67,6 +67,7 @@ class Graphics:
     chosenPhotos = []
     baseScreen = None
     flipMatrix = False
+    expNr = 2
 
     connected = []
 
@@ -91,7 +92,7 @@ class Graphics:
             self.users = pickle.load(fp)
         with open ("photoGrid.p", 'rb') as fp:
             self.grid = pickle.load(fp)
-        with open ("ccMatrixDirProp4.p", 'rb') as fp:
+        with open ("ccMatrixDirProp2.p", 'rb') as fp:
             self.ccMatrix = pickle.load(fp)
 
     def draw_screen(self, screen):
@@ -362,6 +363,7 @@ class Graphics:
                     self.move((0,-1), 1/15)
                     self.RedrawBackground = True
 
+
     # Draw the wait screen
     def waitScreen(self):
         waitText = myfontL.render("VENICE IN FLICKR", False, (255,255,255))
@@ -442,7 +444,7 @@ class Graphics:
         self._screen.blit(self.connection_surface, [0,0])
 
     def recommendScreen2(self):
-        nrRecommendations = 1000
+        nrRecommendations = 100
 
         self._screen.fill(pygame.Color('black'))
         self.connection_surface.fill((0,0,0,0))
@@ -480,7 +482,8 @@ class Graphics:
             average = total/nr
             g[1] = average
 
-        cGroupsIndexes.sort(key = lambda x : x[1])
+        recGrps = []
+        cGroupsIndexes.sort(key = lambda x : x[1], reverse = True)
         length = min(nrRecommendations, len(cGroupsIndexes))
         for i in range(length):
             hotness = int((i/length)*255)
@@ -491,13 +494,16 @@ class Graphics:
                 tl = self.map_coordinate([l.limits[0], l.limits[2]])
                 br = self.map_coordinate([l.limits[1], l.limits[3]])
                 pygame.draw.rect(self._screen, colour, [tl[0], tl[1], br[0]-tl[0], br[1]-tl[1]])
+            recGrps.append((groups[cGroupsIndexes[i][0]], cGroupsIndexes[i][1]))
 
+        selGrps = []
         for g in selectedGroupIndexes:
             colour = (150, 50, 50)
             for l in groups[g].locations:
                 tl = self.map_coordinate([l.limits[0], l.limits[2]])
                 br = self.map_coordinate([l.limits[1], l.limits[3]])
                 pygame.draw.rect(self.connection_surface, colour, [tl[0], tl[1], br[0]-tl[0], br[1]-tl[1]])
+                selGrps.append(groups[g])
 
         if len(self.chosenPhotos) > 1:
             for i in range(len(self.chosenPhotos)-1):
@@ -507,11 +513,47 @@ class Graphics:
             self.draw_photo(p, self.ps * 7, "cross")
 
         self._screen.blit(self.connection_surface, [0,0])
+
+        try:
+            f = open("Recommnedation" + str(self.expNr) + "Src.csv")
+            f.close()
+        except IOError:
+            self.exportRecommendationToRhino(selGrps, recGrps)
+
         if self.flipMatrix:
             self.flipMatrix = False
         else:
             pass
             #self.flipMatrix = True
+
+    def mapCoordinatesToMetres(self, c):
+        origin = (self.lim_coord[0], self.lim_coord[1])
+        y = (c[0]-origin[0]) * 110574
+        x = (c[1]-origin[1]) * 111320 * np.cos(np.deg2rad(c[0]))
+        return(x*1000, y*1000)
+
+    def exportRecommendationToRhino(self, src, rec):
+        with open("Recommnedation" + str(self.expNr) + "Src.csv", 'w') as csvSrc:
+            writer = csv.writer(csvSrc)
+            for g in src:
+                for l in g.locations:
+                    tl = self.mapCoordinatesToMetres((l.limits[0], l.limits[2]))
+                    br = self.mapCoordinatesToMetres((l.limits[1], l.limits[3]))
+                    w = br[0] - tl[0]
+                    h = br[1] - tl[1]
+                    writer.writerow([tl[0], tl[1], w, h])
+
+        with open("Recommnedation" + str(self.expNr) + "Rec.csv", 'w') as csvRec:
+            writer = csv.writer(csvRec)
+            locations = []
+            for g in rec:
+                v = g[1]
+                for l in g[0].locations:
+                    tl = self.mapCoordinatesToMetres((l.limits[0], l.limits[2]))
+                    br = self.mapCoordinatesToMetres((l.limits[1], l.limits[3]))
+                    w = br[0] - tl[0]
+                    h = br[1] - tl[1]
+                    writer.writerow([tl[0], tl[1], w, h, v])
 
     def exploreScene(self):
         self.cursor_surface.fill((0,0,0,0))
@@ -640,6 +682,7 @@ class Graphics:
                             self.Recommend = False
                         else:
                             self.Recommend = True
+                            self.expNr += 1
 
                     # Return shows the old recommendation screen
                     if event.key == pygame.K_q and self.chosenPhotos:

@@ -5,6 +5,8 @@ import scipy.cluster
 import urllib.request
 from PIL import Image
 from io import BytesIO
+from io import BytesIO
+from os import path
 
 c0 = 0
 c2 = 100000
@@ -49,6 +51,25 @@ def getColour(imageAddress):
     #print('most frequent is %s (#%s)' % (peak, colour))
     return colour
 
+def getAllImages(images):
+    count = 0
+    for i in images:
+        if i[3] and (not path.exists("/Volumes/SeagateSSD/FlickrPhotos/" +  str(i[2]) + "_" + str(i[3].split('/')[-1]))):
+            response = requests.get(i[3])
+            try:
+                im = Image.open(BytesIO(response.content))
+                im.thumbnail([256,256], Image.ANTIALIAS)
+                imageFile = "/Volumes/SeagateSSD/FlickrPhotos/" +  str(i[2]) + "_" + str(i[3].split('/')[-1])
+                im.save(imageFile, "JPEG")
+            except OSError:
+                pass
+        else:
+            #print("exists or no url")
+            pass
+        print(count)
+        count +=1
+
+
 def getAllImageColours(images):
     with open("imagesCColour5.csv", 'a') as newcsvfile:
         writer = csv.writer(newcsvfile)
@@ -66,5 +87,7 @@ def getAllImageColours(images):
 
 photos = getPhotos('imagesC.csv')
 print("got Photos")
+print(len(photos))
 
-getAllImageColours(photos)
+#getAllImageColours(photos)
+getAllImages(photos)

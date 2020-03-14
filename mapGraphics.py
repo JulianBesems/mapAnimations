@@ -52,8 +52,8 @@ class Graphics:
     frame = 0
     step = 2000
     RedrawBackground = True
-    Wait = False
-    Buildup = False
+    Wait = True
+    Buildup = True
     ShowData = False
     Recommend = False
     RecommendOld = False
@@ -609,22 +609,36 @@ class Graphics:
                 if surface > 30:
                     c2 = min(c*5, 255) #min(len(l.photos), 255)#
                     pygame.draw.rect(self._screen, [c2,c2,c2], [tl[0], tl[1], br[0]-tl[0], br[1]-tl[1]])
-                    pygame.draw.rect(self._screen, [100,c,c], [tl[0], tl[1], br[0]-tl[0], br[1]-tl[1]], True)
+                    pygame.draw.rect(self._screen, [150,150,150], [tl[0], tl[1], br[0]-tl[0], br[1]-tl[1]], True)
                 else:
-                    pygame.draw.rect(self._screen, [0,0,255], [tl[0], tl[1], br[0]-tl[0], br[1]-tl[1]])
+                    pygame.draw.rect(self._screen, [0,0,0], [tl[0], tl[1], br[0]-tl[0], br[1]-tl[1]])
         else:
             maxVal = 0
             minVal = 1
+            index = 0
             for g in lGroups.groups:
                 if g.value > maxVal:
                     maxVal = g.value
                 if g.value < minVal and not g.value == 0:
                     minVal = g.value
+                #colour = (random.randint(0,255), random.randint(0,255), random.randint(0,255))
                 colour = g.colour #tuple(hex(g.locations[0].photos[0][4]).rgb) #(random.randint(0,255), random.randint(0,255), random.randint(0,255))
+                """if index == 1023:
+                    colour = [255,0,0]
+                    area = 0
+                    first = True"""
                 for l in g.locations:
                     tl = self.map_coordinate([l.limits[0], l.limits[2]])
                     br = self.map_coordinate([l.limits[1], l.limits[3]])
+                    """if index == 1023 and first == True:
+                        tlm = self.mapCoordinatesToMetres([l.limits[0], l.limits[2]])
+                        brm = self.mapCoordinatesToMetres([l.limits[1], l.limits[3]])
+                        area += abs(tlm[0] - brm[0]) * abs(tlm[1] - brm[1])
+                        first = False"""
                     pygame.draw.rect(self._screen, colour, [tl[0], tl[1], br[0]-tl[0], br[1]-tl[1]])
+                """if index == 1023:
+                    print(area)"""
+                index +=1
 
     # Display the graphics
     def display(self):

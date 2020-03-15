@@ -21,6 +21,9 @@ class Cell:
     def __init__(self, photos, limits):
         self.photos = photos
         self.limits = limits
+        a = self.coordinatesToMetres((self.limits[0], self.limits[2]))
+        b = self.coordinatesToMetres((self.limits[1], self.limits[3]))
+        self.limitsM = [a[0], b[0], a[1], b[1]]
         self.uniform = self.isUniform()
         if self.uniform:
             self.subcells = None
@@ -28,18 +31,34 @@ class Cell:
             self.subcells = self.split()
         self.neighbours = []
 
+    def metresToCoordinates(self, c):
+        origin = (self.limits[0], self.limits[2])
+        lat = c[1]/(110574 * 1000) + origin[0]
+        lon = c[0]/(111320 * np.cos(np.deg2rad(lat)) * 1000) + origin[1]
+        return(lat, lon)
+
+    def coordinatesToMetres(self, c):
+        origin = (self.limits[0], self.limits[2])
+        y = (c[0]-origin[0]) * 110574
+        x = (c[1]-origin[1]) * 111320 * np.cos(np.deg2rad(c[0]))
+        return(x*1000, y*1000)
+
+
     def isUniform(self):
         difflat = self.limits[1] - self.limits[0]
         difflon = self.limits[3] - self.limits[2]
-        if len(self.photos) > 2 and min(difflat, difflon) > 0.00005:
+        diffX = self.limitsM[1] - self.limitsM[0]
+        diffY = self.limitsM[3] - self.limitsM[2]
+        if len(self.photos) > 2 and min(diffX, diffY) > 2000:
             scaler = MinMaxScaler()
             coordPhotos = []
             for p in self.photos:
-                coordPhotos.append(np.array(p[0]))
+                coordPhotos.append(np.array(self.coordinatesToMetres(p[0])))
             coordPhotos = scaler.fit_transform(np.array(coordPhotos))
             xKS = stats.kstest(coordPhotos[:,0], 'uniform')
             yKS = stats.kstest(coordPhotos[:,1], 'uniform')
-            if xKS[0] < 0.7 and yKS[0] < 0.7 and xKS[1] > 0.05 and yKS[1] > 0.05:
+            #if xKS[0] < 0.7 and yKS[0] < 0.7 and xKS[1] > 0.05 and yKS[1] > 0.05:
+            if xKS[1] > 0.01 and yKS[1] > 0.01:
                 """plt.scatter(coordPhotos[:,0], coordPhotos[:,1])
                 plt.show()"""
 
@@ -55,11 +74,17 @@ class Cell:
     def split(self):
         difflat = self.limits[1] - self.limits[0]
         difflon = self.limits[3] - self.limits[2]
-        cellSize = min(difflat,difflon) / self.divisions
-        cellDimensions = [difflon/round(difflon/cellSize), difflat/round(difflat/cellSize)]
+        diffX = self.limitsM[1] - self.limitsM[0]
+        diffY = self.limitsM[3] - self.limitsM[2]
+        cellSizeM = min(diffX, diffY) / self.divisions
+        limitLat, limitLon = self.metresToCoordinates([cellSizeM, cellSizeM])
+        cellSizeLat = limitLat - self.limits[0]
+        cellSizeLon = limitLon - self.limits[2]
+        cellDimensions = [difflon/round(difflon/cellSizeLon), difflat/round(difflat/cellSizeLat)]
 
-        grid = [[ [] for _ in range(round(difflat/cellDimensions[1]))]
-            for _ in range(round(difflon/cellDimensions[0]))]
+
+        grid = [[ [] for _ in range(int(round(difflat/cellDimensions[1])))]
+            for _ in range(int(round(difflon/cellDimensions[0])))]
 
         for p in self.photos:
             self.placeInGrid(p, grid, cellDimensions)
@@ -97,16 +122,22 @@ class LocationGrid:
 
     def getPhotos(self):
         #with open ("picsSorted.p", 'rb') as fp:
-        with open ("preprocessedPhotos-00005.p", 'rb') as fp:
+        with open ("preprocessedPhotos-2m.p", 'rb') as fp:
             photos = pickle.load(fp)
         return photos
 
+    def metresToCoordinates(self, c):
+        lat = c[1]/(110574 * 1000)
+        lon = c[0]/(111320 * np.cos(np.deg2rad(lat)) * 1000)
+        return(lat, lon)
+
     def preprocessPhotos(self, photos):
-        cellSize = 0.0001
+        cellSizeLat, cellSizeLon = self.metresToCoordinates([2000,2000])
+        print(cellSizeLat, cellSizeLon)
         difflat = self.limits[1] - self.limits[0]
         difflon = self.limits[3] - self.limits[2]
-        xCells = int(difflon/cellSize) + 1
-        yCells = int(difflat/cellSize) + 1
+        xCells = int(difflon/cellSizeLon) + 1
+        yCells = int(difflat/cellSizeLat) + 1
 
         grid = np.zeros([xCells, yCells], dtype = object)
         print(grid[0][0])
@@ -115,8 +146,8 @@ class LocationGrid:
             y = p[0][0] - self.limits[0]
             x = p[0][1] - self.limits[2]
 
-            xc = int(x/cellSize)
-            yc = int(y/cellSize)
+            xc = int(x/cellSizeLon)
+            yc = int(y/cellSizeLat)
             if (xc < len(grid) and yc < len(grid[0])) and (x >= 0 and y >= 0) and not grid[xc][yc]:
                 grid[xc][yc] = p
 
@@ -127,7 +158,7 @@ class LocationGrid:
                     processedPhotos.append(b)
 
         print("processed")
-        with open("preprocessedPhotos-0001.p", "wb") as fp:
+        with open("preprocessedPhotos-2m.p", "wb") as fp:
             pickle.dump(processedPhotos, fp, protocol = pickle.HIGHEST_PROTOCOL)
         return processedPhotos
 
@@ -167,7 +198,7 @@ class LocationGroups:
         self.getLocations(self.lcGrid.grid, self.locations)
         self.fillNeighbours()
         self.groups.sort(key = lambda x: x.value, reverse = True)
-        self.placePhotos()
+        #self.placePhotos()
 
     def placePhotos(self):
         print(self.photos[0])
@@ -207,7 +238,7 @@ class LocationGroups:
                             group.value = self.getGroupVal(group)
 
     def checkDensity(self, v1, v2):
-        threshold = 0.12511 * min(v2, v2) + 0.00002
+        threshold = 0.25 * min(v1, v2) + 0.000025
         if abs(v1 - v2) < threshold:
             return True
 
@@ -285,7 +316,7 @@ class LocationGroups:
         return grid"""
 
     def getGrid(self):
-        with open ("locationGrid,2,00005,07,005,nr2.p", 'rb') as fp:
+        with open ("locationGrid,2,2m,001.p", 'rb') as fp:
             lcGrid = pickle.load(fp)
         return lcGrid
 
@@ -302,9 +333,11 @@ class LocationGroups:
             photos = pickle.load(fp)
         return photos
 
-#lcGroups = LocationGroups()
+"""lcGroups = LocationGroups()
+with open("locationGroups(2m,001)4,0000025.p", "wb") as fp:
+    pickle.dump(lcGroups, fp, protocol = pickle.HIGHEST_PROTOCOL)"""
 
-"""with open ("locationGroupsWP-lin(8,00002).p", 'rb') as gp:
+"""with open ("locationGroups(2m,001)4,0000025.p", 'rb') as gp:
     lGroups = pickle.load(gp)
 
 for gr in lGroups.groups:
@@ -324,9 +357,9 @@ for gr in lGroups.groups:
     else:
         gr.colour = (r/pn, g/pn, b/pn)
 
-with open("locationGroupsWP-lin(8,00002)2.p", "wb") as fp:
+with open("locationGroups(2m,001)4,0000025C.p", "wb") as fp:
     pickle.dump(lGroups, fp, protocol = pickle.HIGHEST_PROTOCOL)"""
 
 """lcGrid = LocationGrid()
-with open("locationGrid,2,00005,07,005,nr2.p", "wb") as fp:
+with open("locationGrid,2,2m,001.p", "wb") as fp:
     pickle.dump(lcGrid, fp, protocol = pickle.HIGHEST_PROTOCOL)"""

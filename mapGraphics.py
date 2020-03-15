@@ -37,7 +37,8 @@ class Graphics:
     buffer = int(screen_height/100)
     ps = int(buffer/10)
 
-    lim_coord = [45.41960958653527, 12.29609707081636, 45.46473083343668, 12.368291065858616]
+    lim_coord = [45.41360958653527, 12.29609707081636, 45.45873083343668, 12.368291065858616]
+    #lim_coord = [45.464568, 12.29609707081636, 45.50968924690141, 12.368291065858616]
     lim_width = lim_coord[3]-lim_coord[1]
     lim_height = lim_coord[2]-lim_coord[0]
     map_centre = [lim_width/2 + lim_coord[1],
@@ -52,14 +53,15 @@ class Graphics:
     frame = 0
     step = 2000
     RedrawBackground = True
-    Wait = True
-    Buildup = True
+    Metres = True
+    Wait = False
+    Buildup = False
     ShowData = False
     Recommend = False
     RecommendOld = False
     ShowInfo = False
-    LocationGridShow = False
-    showGrid = True
+    LocationGridShow = True
+    showGrid = False
     shownUsers = []
     previousPhotoUrl = None
     previousPhoto = None
@@ -95,19 +97,57 @@ class Graphics:
         with open ("ccMatrixDirProp2.p", 'rb') as fp:
             self.ccMatrix = pickle.load(fp)
 
+        self.minMetresY, self.minMetresX = self.coordinatesToMetres((self.minlat, self.minlon))
+        a = self.coordinatesToMetres((self.lim_coord[0], self.lim_coord[1]))
+        b = self.coordinatesToMetres((self.lim_coord[2], self.lim_coord[3]))
+        self.limMetres = [a[0], a[1], b[0], b[1]]
+        self.lim_widthM = self.limMetres[3]-self.limMetres[1]
+        self.lim_heightM = self.limMetres[2]-self.limMetres[0]
+        self.map_centreM = [self.lim_widthM/2 + self.limMetres[1],
+                        self.lim_heightM/2 + self.limMetres[0]]
+        self.scalingM = min(self.screen_width/self.lim_widthM, self.screen_height/self.lim_heightM)
+
     def draw_screen(self, screen):
         pygame.init()
         pygame.display.set_caption('flick map 1')
 
     def map_coordinate(self, latlon):
-        y = self.screen_centre[1] - ((float(latlon[0]) - self.map_centre[1]) * self.scaling)
-        x = self.screen_centre[0] + ((float(latlon[1]) - self.map_centre[0]) * self.scaling)
+        if self.Metres:
+            return self.map_coordinate_m(self.coordinatesToMetres(latlon))
+        else:
+            y = self.screen_centre[1] - ((float(latlon[0]) - self.map_centre[1]) * self.scaling)
+            x = self.screen_centre[0] + ((float(latlon[1]) - self.map_centre[0]) * self.scaling)
+            return[int(x),int(y)]
+
+    def map_coordinate_m(self, xy):
+        y = self.screen_centre[1] - ((float(xy[1]) - self.map_centreM[1]) * self.scalingM)
+        x = self.screen_centre[0] + ((float(xy[0]) - self.map_centreM[0]) * self.scalingM)
         return[int(x),int(y)]
 
     def inv_coordinates(self, point):
-        lon = (point[0] - self.screen_centre[0])/self.scaling + self.map_centre[0]
-        lat = -(point[1] - self.screen_centre[1])/self.scaling + self.map_centre[1]
+        if self.Metres:
+            (lat, lon) = self.metresToCoordinates(self.inv_coordinates_m(point))
+        else:
+            lon = (point[0] - self.screen_centre[0])/self.scaling + self.map_centre[0]
+            lat = -(point[1] - self.screen_centre[1])/self.scaling + self.map_centre[1]
         return (lat, lon)
+
+    def inv_coordinates_m(self, point):
+        x = (point[0] - self.screen_centre[0])/self.scalingM + self.map_centreM[0]
+        y = -(point[1] - self.screen_centre[1])/self.scalingM + self.map_centreM[1]
+        return (x, y)
+
+    def coordinatesToMetres(self, c):
+        origin = (self.lim_coord[0], self.lim_coord[1])
+        y = (c[0]-origin[0]) * 110574
+        x = (c[1]-origin[1]) * 111320 * np.cos(np.deg2rad(c[0]))
+        return(x*1000, y*1000)
+
+    def metresToCoordinates(self, c):
+        origin = (self.lim_coord[0], self.lim_coord[1])
+        lat = c[1]/(110574 * 1000) + origin[0]
+        lon = c[0]/(111320 * np.cos(np.deg2rad(lat)) * 1000) + origin[1]
+        return(lat, lon)
 
     def getGridCell(self):
         mouseP = pygame.mouse.get_pos()
@@ -121,6 +161,7 @@ class Graphics:
 
     def draw_photo(self, photo, radius, shape, c = None, surface = None):
         centre = self.map_coordinate([photo[0][0], photo[0][1]])
+
         if photo[4]:
             if c:
                 color = c
@@ -132,6 +173,7 @@ class Graphics:
             if shape == "cross":
                 pygame.draw.line(self.connection_surface, color, (centre[0]-r, centre[1]), (centre[0]+r, centre[1]), int(r/2))
                 pygame.draw.line(self.connection_surface, color, (centre[0], centre[1]-r), (centre[0], centre[1]+r), int(r/2))
+
 
     def getUserColor(self, user):
         c = ColorHash(user)
@@ -337,6 +379,17 @@ class Graphics:
 
         self.scaling = min(self.screen_width/self.lim_width, self.screen_height/self.lim_height)
 
+
+        a = self.coordinatesToMetres((self.lim_coord[0], self.lim_coord[1]))
+        b = self.coordinatesToMetres((self.lim_coord[2], self.lim_coord[3]))
+        self.limMetres = [a[0], a[1], b[0], b[1]]
+        self.lim_widthM = self.limMetres[3]-self.limMetres[1]
+        self.lim_heightM = self.limMetres[2]-self.limMetres[0]
+        self.map_centreM = [self.lim_widthM/2 + self.limMetres[1],
+                        self.lim_heightM/2 + self.limMetres[0]]
+        self.scalingM = min(self.screen_width/self.lim_widthM, self.screen_height/self.lim_heightM)
+
+
         vr = ((pos[0] - self.screen_width / 2 )/ (self.screen_width/2), (self.screen_height /2 - pos [1])/(self.screen_height /2))
         self.move(vr, rate/2)
 
@@ -526,19 +579,13 @@ class Graphics:
             pass
             #self.flipMatrix = True
 
-    def mapCoordinatesToMetres(self, c):
-        origin = (self.lim_coord[0], self.lim_coord[1])
-        y = (c[0]-origin[0]) * 110574
-        x = (c[1]-origin[1]) * 111320 * np.cos(np.deg2rad(c[0]))
-        return(x*1000, y*1000)
-
     def exportRecommendationToRhino(self, src, rec):
         with open("Recommnedation" + str(self.expNr) + "Src.csv", 'w') as csvSrc:
             writer = csv.writer(csvSrc)
             for g in src:
                 for l in g.locations:
-                    tl = self.mapCoordinatesToMetres((l.limits[0], l.limits[2]))
-                    br = self.mapCoordinatesToMetres((l.limits[1], l.limits[3]))
+                    tl = self.coordinatesToMetres((l.limits[0], l.limits[2]))
+                    br = self.coordinatesToMetres((l.limits[1], l.limits[3]))
                     w = br[0] - tl[0]
                     h = br[1] - tl[1]
                     writer.writerow([tl[0], tl[1], w, h])
@@ -549,8 +596,8 @@ class Graphics:
             for g in rec:
                 v = g[1]
                 for l in g[0].locations:
-                    tl = self.mapCoordinatesToMetres((l.limits[0], l.limits[2]))
-                    br = self.mapCoordinatesToMetres((l.limits[1], l.limits[3]))
+                    tl = self.coordinatesToMetres((l.limits[0], l.limits[2]))
+                    br = self.coordinatesToMetres((l.limits[1], l.limits[3]))
                     w = br[0] - tl[0]
                     h = br[1] - tl[1]
                     writer.writerow([tl[0], tl[1], w, h, v])
@@ -592,9 +639,11 @@ class Graphics:
                     self.getLocations(c, locations)
 
     def locationGridScreen(self):
-        with open ("locationGrid,2,00005,07,005,nr2.p", 'rb') as fp:
+        with open ("locationGrid,2,2m,001.p", 'rb') as fp:
+        #with open ("locationGrid,2,00005,07,005,nr2.p", 'rb') as fp:
             lcGrid = pickle.load(fp)
-        with open ("locationGroupsWP-lin(8,00002)2.p", 'rb') as gp:
+        with open ("locationGroups(2m,001)4,0000025C.p", 'rb') as gp:
+        #with open ("locationGroupsMetres1.p", 'rb') as gp:
             lGroups = pickle.load(gp)
         locations = []
         self.getLocations(lcGrid.grid, locations)
@@ -631,8 +680,8 @@ class Graphics:
                     tl = self.map_coordinate([l.limits[0], l.limits[2]])
                     br = self.map_coordinate([l.limits[1], l.limits[3]])
                     """if index == 1023 and first == True:
-                        tlm = self.mapCoordinatesToMetres([l.limits[0], l.limits[2]])
-                        brm = self.mapCoordinatesToMetres([l.limits[1], l.limits[3]])
+                        tlm = self.coordinatesToMetres([l.limits[0], l.limits[2]])
+                        brm = self.coordinatesToMetres([l.limits[1], l.limits[3]])
                         area += abs(tlm[0] - brm[0]) * abs(tlm[1] - brm[1])
                         first = False"""
                     pygame.draw.rect(self._screen, colour, [tl[0], tl[1], br[0]-tl[0], br[1]-tl[1]])

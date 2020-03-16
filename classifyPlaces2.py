@@ -198,7 +198,7 @@ class LocationGroups:
         self.getLocations(self.lcGrid.grid, self.locations)
         self.fillNeighbours()
         self.groups.sort(key = lambda x: x.value, reverse = True)
-        #self.placePhotos()
+        self.placePhotos()
 
     def placePhotos(self):
         print(self.photos[0])

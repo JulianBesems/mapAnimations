@@ -43,9 +43,9 @@ class CooccurenceMatrix():
 
                 users_intersection = users_i.intersection(users_j)
 
-                if len(users_intersection) > 0:
+                if len(users_intersection) > 0 and i != j:
                     users_union = users_i.union(users_j)
-                    value = ((len(users_intersection)/len(users_j)) + (len(users_intersection)/len(users_union))) / 2
+                    value = ((len(users_intersection)/len(users_i)) + (len(users_intersection)/len(users_union))) / 2
 
                     cooccurence_matrix[i, j] = value
 
@@ -69,6 +69,6 @@ class CooccurenceMatrix():
         return lcGroups
 
 
-"""ccMatrix = CooccurenceMatrix("userDict.p", "locationGroupsWP2-lin(8,00002).p")
-with open("ccMatrixDirProp6.p", "wb") as fp:
+"""ccMatrix = CooccurenceMatrix("userDict.p", "locationGroups(2m,001)4,0000025C.p")
+with open("ccMatrixDirProp2m.p", "wb") as fp:
     pickle.dump(ccMatrix, fp, protocol = pickle.HIGHEST_PROTOCOL)"""

@@ -60,8 +60,8 @@ class Graphics:
     Recommend = False
     RecommendOld = False
     ShowInfo = False
-    LocationGridShow = True
-    showGrid = False
+    LocationGridShow = False
+    showGrid = True
     shownUsers = []
     previousPhotoUrl = None
     previousPhoto = None
@@ -70,6 +70,10 @@ class Graphics:
     baseScreen = None
     flipMatrix = False
     expNr = 2
+
+    selectedLocation = None
+    showLocation = False
+    locationFrame = 0
 
     connected = []
 
@@ -94,8 +98,28 @@ class Graphics:
             self.users = pickle.load(fp)
         with open ("photoGrid.p", 'rb') as fp:
             self.grid = pickle.load(fp)
-        with open ("ccMatrixDirProp2.p", 'rb') as fp:
+        with open ("ccMatrixDirProp2m.p", 'rb') as fp:
             self.ccMatrix = pickle.load(fp)
+        with open ("groupIndexesMetres.p", 'rb') as fp:
+            self.groupIndexes = pickle.load(fp)
+        self.groupIndexesR = dict((v,k) for k,v in self.groupIndexes.items())
+
+
+        if self.Metres:
+            with open ("locationGrid,2,2m,001.p", 'rb') as fp:
+            #with open ("locationGrid,2,00005,07,005,nr2.p", 'rb') as fp:
+                self.lcGrid = pickle.load(fp)
+        else:
+            with open ("locationGrid,2,00005,07,005,nr2.p", 'rb') as fp:
+                self.lcGrid = pickle.load(fp)
+
+        if self.Metres:
+            with open ("locationGroups(2m,001)4,0000025C.p", 'rb') as gp:
+                self.lGroups = pickle.load(gp)
+        else:
+            with open ("locationGroupsWP-lin(8,00002)2.p", 'rb') as gp:
+                self.lGroups = pickle.load(gp)
+
 
         self.minMetresY, self.minMetresX = self.coordinatesToMetres((self.minlat, self.minlon))
         a = self.coordinatesToMetres((self.lim_coord[0], self.lim_coord[1]))
@@ -515,6 +539,7 @@ class Graphics:
         cGroupsIndexes = []
 
         for g in selectedGroupIndexes:
+            print(g)
             for c in range(len(groups)):
                 if self.ccMatrix.ccMatrix[g, c] > 0 and not g == c:
                     if not [c,0] in cGroupsIndexes:
@@ -558,6 +583,7 @@ class Graphics:
                 pygame.draw.rect(self.connection_surface, colour, [tl[0], tl[1], br[0]-tl[0], br[1]-tl[1]])
                 selGrps.append(groups[g])
 
+
         if len(self.chosenPhotos) > 1:
             for i in range(len(self.chosenPhotos)-1):
                 self.draw_connection(self.chosenPhotos[i][0], self.chosenPhotos[i+1][0], (150,50,50))
@@ -580,7 +606,7 @@ class Graphics:
             #self.flipMatrix = True
 
     def exportRecommendationToRhino(self, src, rec):
-        with open("Recommnedation" + str(self.expNr) + "Src.csv", 'w') as csvSrc:
+        with open("Recommendation" + str(self.expNr) + "Src.csv", 'w') as csvSrc:
             writer = csv.writer(csvSrc)
             for g in src:
                 for l in g.locations:
@@ -639,14 +665,8 @@ class Graphics:
                     self.getLocations(c, locations)
 
     def locationGridScreen(self):
-        with open ("locationGrid,2,2m,001.p", 'rb') as fp:
-        #with open ("locationGrid,2,00005,07,005,nr2.p", 'rb') as fp:
-            lcGrid = pickle.load(fp)
-        with open ("locationGroups(2m,001)4,0000025C.p", 'rb') as gp:
-        #with open ("locationGroupsMetres1.p", 'rb') as gp:
-            lGroups = pickle.load(gp)
         locations = []
-        self.getLocations(lcGrid.grid, locations)
+        self.getLocations(self.lcGrid.grid, locations)
         self._screen.fill(pygame.Color('black'))
         if not self.showGrid:
             for l in locations:
@@ -665,7 +685,7 @@ class Graphics:
             maxVal = 0
             minVal = 1
             index = 0
-            for g in lGroups.groups:
+            for g in self.lGroups.groups:
                 if g.value > maxVal:
                     maxVal = g.value
                 if g.value < minVal and not g.value == 0:

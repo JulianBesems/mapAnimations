@@ -53,6 +53,7 @@ class Graphics:
     frame = 0
     step = 2000
     RedrawBackground = True
+    showBackground = True
     Metres = True
     Wait = False
     Buildup = False
@@ -127,8 +128,8 @@ class Graphics:
         self.limMetres = [a[0], a[1], b[0], b[1]]
         self.lim_widthM = self.limMetres[3]-self.limMetres[1]
         self.lim_heightM = self.limMetres[2]-self.limMetres[0]
-        self.map_centreM = [self.lim_widthM/2 + self.limMetres[1],
-                        self.lim_heightM/2 + self.limMetres[0]]
+        self.map_centreM = [self.lim_widthM/2 + self.limMetres[0],
+                        self.lim_heightM/2 + self.limMetres[1]]
         self.scalingM = min(self.screen_width/self.lim_widthM, self.screen_height/self.lim_heightM)
 
     def draw_screen(self, screen):
@@ -162,13 +163,15 @@ class Graphics:
         return (x, y)
 
     def coordinatesToMetres(self, c):
-        origin = (self.lim_coord[0], self.lim_coord[1])
+        #origin = (self.lim_coord[0], self.lim_coord[1])
+        origin = (self.minlat, self.minlon)
         y = (c[0]-origin[0]) * 110574
         x = (c[1]-origin[1]) * 111320 * np.cos(np.deg2rad(c[0]))
         return(x*1000, y*1000)
 
     def metresToCoordinates(self, c):
-        origin = (self.lim_coord[0], self.lim_coord[1])
+        #origin = (self.lim_coord[0], self.lim_coord[1])
+        origin = (self.minlat, self.minlon)
         lat = c[1]/(110574 * 1000) + origin[0]
         lon = c[0]/(111320 * np.cos(np.deg2rad(lat)) * 1000) + origin[1]
         return(lat, lon)
@@ -346,9 +349,18 @@ class Graphics:
         lat, lon = self.inv_coordinates(mouseP)
         latText = myfontS.render(str(lat), False, (255,255,255))
         lonText = myfontS.render(str(lon), False, (255,255,255))
-        latWidth = latText.get_size()[0]
-        self.cursor_surface.blit(latText, (self.screen_width - latWidth - self.buffer, mouseP[1] + self.buffer))
-        self.cursor_surface.blit(lonText, (mouseP[0] + self.buffer, self.buffer))
+
+        x,y = self.coordinatesToMetres((lat,lon))
+        xText = myfontS.render(str(x), False, (255,255,255))
+        yText = myfontS.render(str(y), False, (255,255,255))
+
+        #latWidth = latText.get_size()[0]
+        #self.cursor_surface.blit(latText, (self.screen_width - latWidth - self.buffer, mouseP[1] + self.buffer))
+        #self.cursor_surface.blit(lonText, (mouseP[0] + self.buffer, self.buffer))
+
+        latWidth = xText.get_size()[0]
+        self.cursor_surface.blit(yText, (self.screen_width - latWidth - self.buffer, mouseP[1] + self.buffer))
+        self.cursor_surface.blit(xText, (mouseP[0] + self.buffer, self.buffer))
 
     def showInfo(self):
         iTexts = []
@@ -383,6 +395,15 @@ class Graphics:
 
         self.scaling = min(self.screen_width/self.lim_width, self.screen_height/self.lim_height)
 
+        a = self.coordinatesToMetres((self.lim_coord[0], self.lim_coord[1]))
+        b = self.coordinatesToMetres((self.lim_coord[2], self.lim_coord[3]))
+        self.limMetres = [a[0], a[1], b[0], b[1]]
+        self.lim_widthM = self.limMetres[3]-self.limMetres[1]
+        self.lim_heightM = self.limMetres[2]-self.limMetres[0]
+        self.map_centreM = [self.lim_widthM/2 + self.limMetres[0],
+                        self.lim_heightM/2 + self.limMetres[1]]
+        self.scalingM = min(self.screen_width/self.lim_widthM, self.screen_height/self.lim_heightM)
+
     def zoom(self, arg):
         ratio = self.screen_width/self.screen_height
         pos = pygame.mouse.get_pos()
@@ -409,8 +430,8 @@ class Graphics:
         self.limMetres = [a[0], a[1], b[0], b[1]]
         self.lim_widthM = self.limMetres[3]-self.limMetres[1]
         self.lim_heightM = self.limMetres[2]-self.limMetres[0]
-        self.map_centreM = [self.lim_widthM/2 + self.limMetres[1],
-                        self.lim_heightM/2 + self.limMetres[0]]
+        self.map_centreM = [self.lim_widthM/2 + self.limMetres[0],
+                        self.lim_heightM/2 + self.limMetres[1]]
         self.scalingM = min(self.screen_width/self.lim_widthM, self.screen_height/self.lim_heightM)
 
 
@@ -634,6 +655,21 @@ class Graphics:
 
         if self.RedrawBackground:
             self.photo_surface.fill(pygame.Color('black'))
+
+            if self.showBackground:
+                backgroundImg = pygame.image.load('mapWhiteTransparant.png')
+                tlm = self.inv_coordinates_m((0,0))
+                brm = self.inv_coordinates_m((self.screen_width, self.screen_height))
+                tlPixel = (0.00108256 * tlm[0] - 7770, -0.00108547 * tlm[1] + 16418)#6300 - (0.00107578 * tlm[1]+224.164))
+                brPixel = (0.00108256 * brm[0] - 7770, -0.00108547 * brm[1] + 16418)#6300 - (0.00107578 * brm[1]+224.164))
+                pixWidth = brPixel[0] - tlPixel[0]
+                pixHeight = brPixel[1] - tlPixel[1]
+                scaleW =  self.screen_width / pixWidth
+                scaleH =  self.screen_height / pixHeight
+
+                backgroundImg = pygame.transform.scale(backgroundImg, (int(scaleH * 10080), int(scaleW * 6300)))
+                self.photo_surface.blit(backgroundImg, [- scaleW * tlPixel[0], - scaleH * tlPixel[1]])
+
             for p in self.photos:
                 date = datetime.fromtimestamp(int(p[2]))
                 if ((self.yearRange[0] <= date.year <= self.yearRange[1]) and
@@ -651,6 +687,8 @@ class Graphics:
 
         self.drawMouse()
         self.timeSlider()
+
+
 
         self._screen.blit(self.photo_surface, [0,0])
         self._screen.blit(self.connection_surface, [0,0])
@@ -782,6 +820,33 @@ class Graphics:
                         self._screen.fill(pygame.Color('black'))
                         self.photo_surface.fill(pygame.Color('black'))
                         self.RedrawBackground = True
+
+                    # switch between metres and coordinate mapping
+                    if event.key == pygame.K_m:
+                        if self.Metres:
+                            self.Metres = False
+                            with open ("locationGrid,2,00005,07,005,nr2.p", 'rb') as fp:
+                                self.lcGrid = pickle.load(fp)
+                            with open ("locationGroupsWP-lin(8,00002)2.p", 'rb') as gp:
+                                self.lGroups = pickle.load(gp)
+
+                        else:
+                            self.Metres = True
+                            with open ("locationGrid,2,2m,001.p", 'rb') as fp:
+                                self.lcGrid = pickle.load(fp)
+                            with open ("locationGroups(2m,001)4,0000025C.p", 'rb') as gp:
+                                self.lGroups = pickle.load(gp)
+
+                        self._screen.fill(pygame.Color('black'))
+                        self.photo_surface.fill(pygame.Color('black'))
+                        self.RedrawBackground = True
+
+                    # toggle building footprint background
+                    if event.key == pygame.K_f:
+                        if self.showBackground:
+                            self.showBackground = False
+                        else:
+                            self.showBackground = True
 
                     if event.key == pygame.K_i:
                             if self.ShowInfo:

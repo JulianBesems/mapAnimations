@@ -38,6 +38,7 @@ class Graphics:
     ps = int(buffer/10)
 
     lim_coord = [45.41360958653527, 12.29609707081636, 45.45873083343668, 12.368291065858616]
+    lim_coordPrevious = None
     #lim_coord = [45.464568, 12.29609707081636, 45.50968924690141, 12.368291065858616]
     lim_width = lim_coord[3]-lim_coord[1]
     lim_height = lim_coord[2]-lim_coord[0]
@@ -47,6 +48,9 @@ class Graphics:
     scaling = min(screen_width/lim_width, screen_height/lim_height)
     monthRange = [0,12]
     yearRange = [2003, 2020]
+
+    backgroundImgPIL = Image.open('mapWhiteTransparantOpaque.png')
+    backgroundImg = pygame.image.load('mapWhiteTransparantOpaque.png')
 
     # Variables to keep track of the scenes
     cycle = 0
@@ -62,6 +66,9 @@ class Graphics:
     RecommendOld = False
     ShowInfo = False
     LocationGridShow = False
+    previewLocationWindow = False
+    selectedLocationWindow = None
+    showLocationWindow = False
     showGrid = True
     shownUsers = []
     previousPhotoUrl = None
@@ -185,6 +192,22 @@ class Graphics:
         yc = int(y/self.cellSize)
         if (xc < self.nrCellsX and yc < self.nrCellsY) and (xc > 0 and yc > 0):
             return(self.grid[xc][yc])
+
+    def getSelectedLocation(self):
+        if pygame.mouse.get_pressed()[0]:
+            mouseP = pygame.mouse.get_pos()
+            (lat, lon) = self.inv_coordinates(mouseP)
+            groups = self.lGroups.groups
+            for g in groups:
+                for l in g.locations:
+                    if l.limits[0] <= lat <= l.limits[1] and l.limits[2] <= lon <= l.limits[3]:
+                        self.previewLocationWindow = True
+                        self.selectedLocationWindow = g
+                        return g
+        elif pygame.mouse.get_pressed()[2]:
+            self.previewLocationWindow = False
+            self.selectedLocationWindow = None
+
 
     def draw_photo(self, photo, radius, shape, c = None, surface = None):
         centre = self.map_coordinate([photo[0][0], photo[0][1]])
@@ -350,17 +373,17 @@ class Graphics:
         latText = myfontS.render(str(lat), False, (255,255,255))
         lonText = myfontS.render(str(lon), False, (255,255,255))
 
-        x,y = self.coordinatesToMetres((lat,lon))
-        xText = myfontS.render(str(x), False, (255,255,255))
-        yText = myfontS.render(str(y), False, (255,255,255))
+        #x,y = self.coordinatesToMetres((lat,lon))
+        #xText = myfontS.render(str(x), False, (255,255,255))
+        #yText = myfontS.render(str(y), False, (255,255,255))
 
-        #latWidth = latText.get_size()[0]
-        #self.cursor_surface.blit(latText, (self.screen_width - latWidth - self.buffer, mouseP[1] + self.buffer))
-        #self.cursor_surface.blit(lonText, (mouseP[0] + self.buffer, self.buffer))
+        latWidth = latText.get_size()[0]
+        self.cursor_surface.blit(latText, (self.screen_width - latWidth - self.buffer, mouseP[1] + self.buffer))
+        self.cursor_surface.blit(lonText, (mouseP[0] + self.buffer, self.buffer))
 
-        latWidth = xText.get_size()[0]
-        self.cursor_surface.blit(yText, (self.screen_width - latWidth - self.buffer, mouseP[1] + self.buffer))
-        self.cursor_surface.blit(xText, (mouseP[0] + self.buffer, self.buffer))
+        #latWidth = xText.get_size()[0]
+        #self.cursor_surface.blit(yText, (self.screen_width - latWidth - self.buffer, mouseP[1] + self.buffer))
+        #self.cursor_surface.blit(xText, (mouseP[0] + self.buffer, self.buffer))
 
     def showInfo(self):
         iTexts = []
@@ -649,6 +672,12 @@ class Graphics:
                     h = br[1] - tl[1]
                     writer.writerow([tl[0], tl[1], w, h, v])
 
+    def rescaleBackgroundImage(self, tl, br):
+        im = self.backgroundImgPIL
+        imC = im.crop((tl[0], tl[1], br[0], br[1]))
+        imC = imC.resize((self.screen_width, self.screen_height))
+        imC.save('croppedBackground.png', 'PNG')
+
     def exploreScene(self):
         self.cursor_surface.fill((0,0,0,0))
         self.connection_surface.fill((0,0,0,0))
@@ -657,7 +686,6 @@ class Graphics:
             self.photo_surface.fill(pygame.Color('black'))
 
             if self.showBackground:
-                backgroundImg = pygame.image.load('mapWhiteTransparant.png')
                 tlm = self.inv_coordinates_m((0,0))
                 brm = self.inv_coordinates_m((self.screen_width, self.screen_height))
                 tlPixel = (0.00108256 * tlm[0] - 7770, -0.00108547 * tlm[1] + 16418)#6300 - (0.00107578 * tlm[1]+224.164))
@@ -667,8 +695,13 @@ class Graphics:
                 scaleW =  self.screen_width / pixWidth
                 scaleH =  self.screen_height / pixHeight
 
-                backgroundImg = pygame.transform.scale(backgroundImg, (int(scaleH * 10080), int(scaleW * 6300)))
-                self.photo_surface.blit(backgroundImg, [- scaleW * tlPixel[0], - scaleH * tlPixel[1]])
+                self.rescaleBackgroundImage(tlPixel, brPixel)
+
+                bImage = pygame.image.load('croppedBackground.png')
+                #backgroundImg = pygame.transform.scale(self.backgroundImg, (int(scaleH * 10080), int(scaleW * 6300)))
+                #backgroundImg.set_alpha(128)
+                #self.photo_surface.blit(backgroundImg, [- scaleW * tlPixel[0], - scaleH * tlPixel[1]])
+                self.photo_surface.blit(bImage, [0,0])
 
             for p in self.photos:
                 date = datetime.fromtimestamp(int(p[2]))
@@ -703,10 +736,11 @@ class Graphics:
                     self.getLocations(c, locations)
 
     def locationGridScreen(self):
+        self.getSelectedLocation()
         locations = []
         self.getLocations(self.lcGrid.grid, locations)
         self._screen.fill(pygame.Color('black'))
-        if not self.showGrid:
+        if self.showGrid:
             for l in locations:
                 tl = self.map_coordinate([l.limits[0], l.limits[2]])
                 br = self.map_coordinate([l.limits[1], l.limits[3]])
@@ -720,32 +754,95 @@ class Graphics:
                 else:
                     pygame.draw.rect(self._screen, [0,0,0], [tl[0], tl[1], br[0]-tl[0], br[1]-tl[1]])
         else:
-            maxVal = 0
-            minVal = 1
-            index = 0
-            for g in self.lGroups.groups:
-                if g.value > maxVal:
-                    maxVal = g.value
-                if g.value < minVal and not g.value == 0:
-                    minVal = g.value
-                #colour = (random.randint(0,255), random.randint(0,255), random.randint(0,255))
-                colour = g.colour #tuple(hex(g.locations[0].photos[0][4]).rgb) #(random.randint(0,255), random.randint(0,255), random.randint(0,255))
-                """if index == 1023:
-                    colour = [255,0,0]
-                    area = 0
-                    first = True"""
-                for l in g.locations:
-                    tl = self.map_coordinate([l.limits[0], l.limits[2]])
-                    br = self.map_coordinate([l.limits[1], l.limits[3]])
-                    """if index == 1023 and first == True:
-                        tlm = self.coordinatesToMetres([l.limits[0], l.limits[2]])
-                        brm = self.coordinatesToMetres([l.limits[1], l.limits[3]])
-                        area += abs(tlm[0] - brm[0]) * abs(tlm[1] - brm[1])
-                        first = False"""
-                    pygame.draw.rect(self._screen, colour, [tl[0], tl[1], br[0]-tl[0], br[1]-tl[1]])
-                """if index == 1023:
-                    print(area)"""
-                index +=1
+            if not self.previewLocationWindow:
+                for g in self.lGroups.groups:
+                    #colour = (random.randint(0,255), random.randint(0,255), random.randint(0,255))
+                    colour = g.colour #tuple(hex(g.locations[0].photos[0][4]).rgb) #(random.randint(0,255), random.randint(0,255), random.randint(0,255))
+                    for l in g.locations:
+                        tl = self.map_coordinate([l.limits[0], l.limits[2]])
+                        br = self.map_coordinate([l.limits[1], l.limits[3]])
+                        """if index == 1023 and first == True:
+                            tlm = self.coordinatesToMetres([l.limits[0], l.limits[2]])
+                            brm = self.coordinatesToMetres([l.limits[1], l.limits[3]])
+                            area += abs(tlm[0] - brm[0]) * abs(tlm[1] - brm[1])
+                            first = False"""
+                        pygame.draw.rect(self._screen, colour, [tl[0], tl[1], br[0]-tl[0], br[1]-tl[1]])
+            else:
+                g = self.selectedLocationWindow
+                if not self.showLocationWindow:
+                    colour = g.colour #tuple(hex(g.locations[0].photos[0][4]).rgb) #(random.randint(0,255), random.randint(0,255), random.randint(0,255))
+                    for l in g.locations:
+                        tl = self.map_coordinate([l.limits[0], l.limits[2]])
+                        br = self.map_coordinate([l.limits[1], l.limits[3]])
+
+                        pygame.draw.rect(self._screen, colour, [tl[0], tl[1], br[0]-tl[0], br[1]-tl[1]])
+                else:
+                    if not self.lim_coordPrevious:
+                        self.lim_coordPrevious = self.lim_coord.copy()
+                    g_limits = g.locations[0].limits.copy()
+
+                    for l in g.locations:
+                        if l.limits[0] < g_limits[0]:
+                            g_limits[0] = l.limits[0]
+                        if l.limits[2] < g_limits[2]:
+                            g_limits[2] = l.limits[2]
+                        if l.limits[1] > g_limits[1]:
+                            g_limits[1] = l.limits[1]
+                        if l.limits[3] > g_limits[3]:
+                            g_limits[3] = l.limits[3]
+
+                    g_width = g_limits[3] - g_limits[2]
+                    g_height = g_limits[1] - g_limits[0]
+
+                    buffer = max(g_width, g_height)/20
+
+                    s_limits = [g_limits[0] - buffer, g_limits[1] + buffer,
+                                g_limits[2] - buffer, g_limits[3] + buffer]
+
+                    s_width = s_limits[3] - s_limits[2]
+                    s_height = s_limits[1] - s_limits[0]
+
+                    s_ratio = s_width/s_height
+                    if s_ratio > self.screen_width / self.screen_height:
+                        f_height = s_width / (self.screen_width / self.screen_height)
+                        f_width = s_width
+                        s_limits[0] = s_limits[0] - ((f_height - s_height) / 2)
+                        s_limits[1] = s_limits[1] + ((f_height - s_height) / 2)
+                    else:
+                        f_width = (self.screen_width / self.screen_height) * s_height
+                        f_height = s_height
+                        s_limits[2] = s_limits[2] - ((f_width - s_width) / 2)
+                        s_limits[3] = s_limits[3] + ((f_width - s_width) / 2)
+
+                    self.lim_coord = [s_limits[0], s_limits[2], s_limits[1], s_limits[3]]
+
+                    self.lim_width = self.lim_coord[3]-self.lim_coord[1]
+                    self.lim_height = self.lim_coord[2]-self.lim_coord[0]
+                    self.map_centre = [self.lim_width/2 + self.lim_coord[1],
+                                    self.lim_height/2 + self.lim_coord[0]]
+
+                    self.scaling = min(self.screen_width/self.lim_width, self.screen_height/self.lim_height)
+
+
+                    a = self.coordinatesToMetres((self.lim_coord[0], self.lim_coord[1]))
+                    b = self.coordinatesToMetres((self.lim_coord[2], self.lim_coord[3]))
+                    self.limMetres = [a[0], a[1], b[0], b[1]]
+                    self.lim_widthM = self.limMetres[3]-self.limMetres[1]
+                    self.lim_heightM = self.limMetres[2]-self.limMetres[0]
+                    self.map_centreM = [self.lim_widthM/2 + self.limMetres[0],
+                                    self.lim_heightM/2 + self.limMetres[1]]
+                    self.scalingM = min(self.screen_width/self.lim_widthM, self.screen_height/self.lim_heightM)
+
+                    colour = g.colour #tuple(hex(g.locations[0].photos[0][4]).rgb) #(random.randint(0,255), random.randint(0,255), random.randint(0,255))
+                    for l in g.locations:
+                        tl = self.map_coordinate([l.limits[0], l.limits[2]])
+                        br = self.map_coordinate([l.limits[1], l.limits[3]])
+
+                        self.RedrawBackground = True
+                        self.exploreScene()
+
+                        #pygame.draw.rect(self._screen, colour, [tl[0], tl[1], br[0]-tl[0], br[1]-tl[1]])
+
 
     # Display the graphics
     def display(self):
@@ -781,6 +878,8 @@ class Graphics:
                             self.ShowData = False
                         else:
                             self.ShowData = True
+
+                    # g shows grid
                     if event.key == pygame.K_g:
                         if self.LocationGridShow:
                             self._screen.fill(pygame.Color('black'))
@@ -788,6 +887,7 @@ class Graphics:
                             self.LocationGridShow = False
                         else:
                             self.LocationGridShow = True
+                        self.previewLocationWindow = False
 
                     if event.key == pygame.K_SPACE:
                         if self.LocationGridShow:
@@ -797,15 +897,41 @@ class Graphics:
                                 self.showGrid = True
 
                     # Return shows the recommended spaces
-                    if event.key == pygame.K_RETURN and self.chosenPhotos:
-                        if self.Recommend:
-                            self._screen.fill(pygame.Color('black'))
-                            self.Recommend = False
-                        else:
-                            self.Recommend = True
-                            self.expNr += 1
+                    if event.key == pygame.K_RETURN:
+                        if self.chosenPhotos and (not self.previewLocationWindow):
+                            if self.Recommend:
+                                self._screen.fill(pygame.Color('black'))
+                                self.Recommend = False
+                            else:
+                                self.Recommend = True
+                                self.expNr += 1
+                        elif self.previewLocationWindow:
+                            if not self.showLocationWindow:
+                                self.showLocationWindow = True
+                            else:
+                                self.showLocationWindow = False
+                                self.lim_coord = self.lim_coordPrevious.copy()
+                                self.lim_coordPrevious = None
 
-                    # Return shows the old recommendation screen
+                                self.lim_width = self.lim_coord[3]-self.lim_coord[1]
+                                self.lim_height = self.lim_coord[2]-self.lim_coord[0]
+                                self.map_centre = [self.lim_width/2 + self.lim_coord[1],
+                                                self.lim_height/2 + self.lim_coord[0]]
+
+                                self.scaling = min(self.screen_width/self.lim_width, self.screen_height/self.lim_height)
+
+
+                                a = self.coordinatesToMetres((self.lim_coord[0], self.lim_coord[1]))
+                                b = self.coordinatesToMetres((self.lim_coord[2], self.lim_coord[3]))
+                                self.limMetres = [a[0], a[1], b[0], b[1]]
+                                self.lim_widthM = self.limMetres[3]-self.limMetres[1]
+                                self.lim_heightM = self.limMetres[2]-self.limMetres[0]
+                                self.map_centreM = [self.lim_widthM/2 + self.limMetres[0],
+                                                self.lim_heightM/2 + self.limMetres[1]]
+                                self.scalingM = min(self.screen_width/self.lim_widthM, self.screen_height/self.lim_heightM)
+
+
+                    # q shows the old recommendation screen
                     if event.key == pygame.K_q and self.chosenPhotos:
                         if self.RecommendOld:
                             self.RecommendOld = False
@@ -847,6 +973,7 @@ class Graphics:
                             self.showBackground = False
                         else:
                             self.showBackground = True
+                        self.RedrawBackground = True
 
                     if event.key == pygame.K_i:
                             if self.ShowInfo:
